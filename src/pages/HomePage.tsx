@@ -69,15 +69,14 @@ function HomePage() {
     const sectionContainerReveal: Variants = {
       hidden: {
         opacity: 0,
-        clipPath: 'polygon(0 100%, 100% 100%, 100% 100%, 0% 100%)',
+        y: 50,
       },
       visible: {
         opacity: 1,
-        // Use calc() in clipPath to expand the area, preventing shadows/glows from being cropped.
-        clipPath: 'polygon(-30px -30px, calc(100% + 30px) -30px, calc(100% + 30px) calc(100% + 30px), -30px calc(100% + 30px))',
+        y: 0,
         transition: {
-          duration: 1,
-          ease: [0.4, 0, 0.2, 1],
+          duration: 0.8,
+          ease: "easeOut",
         },
       },
     };
