@@ -1,8 +1,15 @@
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
-import { config } from '../../config';
 
-const firebaseConfig = config.FIREBASE_CONFIG;
+const firebaseConfig = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+};
 
 let app: firebase.app.App | null = null;
 let authInstance: firebase.auth.Auth | null = null;
@@ -24,7 +31,7 @@ if (firebaseConfig.apiKey) {
         authInstance = null;
     }
 } else {
-    console.warn("Firebase credentials not set in config.ts. Authentication features will be disabled.");
+    console.warn("Firebase credentials not set in environment variables. Authentication features will be disabled.");
 }
 
 // Initialize Firebase Authentication and get a reference to the service
