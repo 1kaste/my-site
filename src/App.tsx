@@ -15,6 +15,7 @@ import TermsOfServicePage from './pages/TermsOfServicePage';
 import ContactPage from './pages/ContactPage';
 import { useTheme } from './hooks/useTheme';
 import { useContent } from './hooks/useContent';
+import { config } from '../config';
 
 const AppContent: React.FC = () => {
     const [isLoginVisible, setLoginVisible] = useState(false);
@@ -26,12 +27,12 @@ const AppContent: React.FC = () => {
     const [route, setRoute] = useState(() => window.location.hash || '#/');
 
     useEffect(() => {
-        const emailJsPublicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+        const emailJsPublicKey = config.EMAILJS_PUBLIC_KEY;
         // Initialize EmailJS
         if (emailJsPublicKey) {
             emailjs.init({ publicKey: emailJsPublicKey });
         } else {
-            console.warn("EmailJS Public Key is not set. Contact form will run in demo mode.");
+            console.warn("EmailJS Public Key is not set in config.ts. Contact form will run in demo mode.");
         }
 
         // Apply theme settings as CSS variables
