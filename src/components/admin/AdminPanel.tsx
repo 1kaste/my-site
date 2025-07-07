@@ -1,13 +1,11 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence, MotionProps } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { CloseIcon } from '../ui/icons';
 import {
-    WhyChooseUsFeature, Statistic, Project, ProjectCategory, LegalPage, SocialIconName, FloatingIconName, IconSourceType, IconSetting, ThemeSettings, ContentState
+    Project, ContentState, ThemeSettings
 } from '../../types';
 import { useContent } from '../../hooks/useContent';
-// You might need to import `v4 as uuidv4` if you use `uuid` library
-// import { v4 as uuidv4 } from 'uuid'; // If you're using uuid, uncomment this
 
 // Helper function to generate a unique ID
 // This is a simple timestamp + random string. For very high-volume apps, consider a dedicated UUID library.
@@ -73,7 +71,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
             const updatedContent = { ...prevContent };
             // Simple path handling for direct properties
             // For nested objects, you'd need a more robust deep update function
-            // Example for "aboutUs.mission": path = "aboutUs", name = "mission"
             if (path === 'aboutUs' && name === 'mission') {
                 return {
                     ...prevContent,
@@ -302,7 +299,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                         </CollapsibleSection>
 
 
-                        {/* Theme Settings */}
+                        {/* Theme Settings - NOW WITH ALL OPTIONS */}
                         <CollapsibleSection title="Theme Settings">
                             <label className="block mb-2">Font Family (CSS string)</label>
                             <input
@@ -329,7 +326,89 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                 onChange={handleThemeSettingChange}
                                 className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                             />
-                            {/* Add other theme settings */}
+
+                            {/* Added Missing Theme Options */}
+                            <label className="block mb-2">Dark Mode Background Color</label>
+                            <input
+                                type="color"
+                                name="darkModeBgColor"
+                                value={localThemeSettings.darkModeBgColor || '#1A1A1A'}
+                                onChange={handleThemeSettingChange}
+                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                            />
+                            <label className="block mb-2">Dark Mode Heading Color</label>
+                            <input
+                                type="color"
+                                name="darkModeHeadingColor"
+                                value={localThemeSettings.darkModeHeadingColor || '#FFFFFF'}
+                                onChange={handleThemeSettingChange}
+                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                            />
+                            <label className="block mb-2">Dark Mode Text Color</label>
+                            <input
+                                type="color"
+                                name="darkModeTextColor"
+                                value={localThemeSettings.darkModeTextColor || '#F0F0F0'}
+                                onChange={handleThemeSettingChange}
+                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                            />
+                            <label className="block mb-2">Light Mode Background Color</label>
+                            <input
+                                type="color"
+                                name="lightModeBgColor"
+                                value={localThemeSettings.lightModeBgColor || '#FFFFFF'}
+                                onChange={handleThemeSettingChange}
+                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                            />
+                            <label className="block mb-2">Light Mode Heading Color</label>
+                            <input
+                                type="color"
+                                name="lightModeHeadingColor"
+                                value={localThemeSettings.lightModeHeadingColor || '#333333'}
+                                onChange={handleThemeSettingChange}
+                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                            />
+                            <label className="block mb-2">Light Mode Text Color</label>
+                            <input
+                                type="color"
+                                name="lightModeTextColor"
+                                value={localThemeSettings.lightModeTextColor || '#555555'}
+                                onChange={handleThemeSettingChange}
+                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                            />
+                            <label className="block mb-2">Dynamic Title Color Start</label>
+                            <input
+                                type="color"
+                                name="dynamicTitleColorStart"
+                                value={localThemeSettings.dynamicTitleColorStart || '#FF4C60'}
+                                onChange={handleThemeSettingChange}
+                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                            />
+                            <label className="block mb-2">Dynamic Title Color End</label>
+                            <input
+                                type="color"
+                                name="dynamicTitleColorEnd"
+                                value={localThemeSettings.dynamicTitleColorEnd || '#17D161'}
+                                onChange={handleThemeSettingChange}
+                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                            />
+                             <label className="block mb-2">Glow Animation (CSS string)</label>
+                            <input
+                                type="text"
+                                name="glowAnimation"
+                                value={localThemeSettings.glowAnimation || 'pulse'}
+                                onChange={handleThemeSettingChange}
+                                placeholder="e.g., pulse, spin"
+                                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                            />
+                            <label className="block mb-2">Glow Color</label>
+                            <input
+                                type="color"
+                                name="glowColor"
+                                value={localThemeSettings.glowColor || '#FF4C60'}
+                                onChange={handleThemeSettingChange}
+                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                            />
                         </CollapsibleSection>
 
                         {/* Project Management Section */}
