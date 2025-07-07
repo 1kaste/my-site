@@ -3,13 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { CloseIcon } from '../ui/icons';
 import {
-    Project, ContentState, ThemeSettings
-} from '../../types';
+    Project, ContentState, ThemeSettings, // Keep these
+    WhyChooseUsFeature, Statistic, LegalPage, SocialLink, HeaderLink, Service, IconSetting,
+    SocialIconName, FloatingIconName // Assuming these are still needed for dropdowns
+} from '../../types'; // Assuming types.ts has these
+
 import { useContent } from '../../hooks/useContent';
 
 // Helper function to generate a unique ID
-const generateUniqueId = () => `p-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+const generateUniqueId = () => `id-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
+// Define default empty structures for new items (ensuring consistent IDs)
 const emptyProject: Project = {
     id: generateUniqueId(),
     title: '',
@@ -19,6 +23,57 @@ const emptyProject: Project = {
     category: 'Website',
     projectUrl: '',
     gallery: []
+};
+
+const emptyService: Service = {
+    id: generateUniqueId(),
+    title: '',
+    description: ''
+};
+
+const emptyHeaderLink: HeaderLink = {
+    id: generateUniqueId(),
+    text: '',
+    url: ''
+};
+
+const emptySocialLink: SocialLink = {
+    id: generateUniqueId(),
+    name: 'Facebook', // Default to a common one, ensure it's a valid SocialIconName
+    url: ''
+};
+
+const emptyWhyChooseUsFeature: WhyChooseUsFeature = {
+    id: generateUniqueId(),
+    title: '',
+    description: '',
+    icon: 'Innovation' // Default icon, ensure it's a valid WhyChooseUsFeature icon
+};
+
+const emptyStatistic: Statistic = {
+    id: generateUniqueId(),
+    label: '',
+    value: '',
+    suffix: ''
+};
+
+const emptyAboutUsValue: { id: string; title: string; description: string; icon: 'Lightbulb' | 'UsersGroup' | 'ShieldCheck' } = {
+    id: generateUniqueId(),
+    title: '',
+    description: '',
+    icon: 'Lightbulb' // Default icon, ensure it's a valid AboutUsValue icon
+};
+
+const emptyLegalPage: LegalPage = {
+    id: generateUniqueId(),
+    title: '',
+    url: ''
+};
+
+// Default for a new icon setting (e.g., if you were to add a new floating button type)
+const defaultIconSetting: IconSetting = {
+    type: 'pre-built',
+    value: 'WhatsApp' // Default value for a pre-built icon
 };
 
 interface AdminPanelProps {
@@ -49,7 +104,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
     const [newProject, setNewProject] = useState<Project>(emptyProject);
     const [isCreatingNewCategory, setIsCreatingNewCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
-    const [activeTab, setActiveTab] = useState<'general' | 'theme' | 'projects'>('general'); // New state for tabs
+    // Added 'content' tab
+    const [activeTab, setActiveTab] = useState<'general' | 'content' | 'theme' | 'projects'>('general');
 
     // Sync fetched data with local state whenever fetched data changes
     useEffect(() => {
@@ -63,27 +119,79 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
         [localContent.latestProjects.projects]
     );
 
-    // Generic handler for changing simple text/input fields in localContent
-    const handleLocalContentChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, path: string) => {
+    // --- Generic Handlers for Content State ---
+
+    // Handles changes for simple string/number fields at various depths using a path string
+    const handleContentFieldChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>, path: string) => {
         const { name, value } = e.target;
         setLocalContent(prevContent => {
-            if (path === 'aboutUs') {
-                return {
-                    ...prevContent,
-                    aboutUs: { ...prevContent.aboutUs, [name]: value }
-                };
+            const newContent = JSON.parse(JSON.stringify(prevContent)); // Deep copy to ensure immutability for nested objects
+            let currentLevel: any = newContent;
+            const pathParts = path.split('.');
+
+            // Traverse the path to reach the correct nested object
+            for (let i = 0; i < pathParts.length; i++) {
+                if (i === pathParts.length - 1) { // Last part is the field to update
+                    currentLevel[pathParts[i]][name] = value;
+                } else {
+                    if (!currentLevel[pathParts[i]]) {
+                        currentLevel[pathParts[i]] = {}; // Initialize if undefined
+                    }
+                    currentLevel = currentLevel[pathParts[i]];
+                }
             }
-            if (name === 'siteName' || name === 'tagline') {
-                return {
-                    ...prevContent,
-                    [name]: value
-                };
-            }
-            return prevContent; // Return the unchanged state if path/name combo not handled
+            return newContent;
         });
     }, []);
 
-    // Handler for theme settings changes
+    // Handles changes for items within arrays (e.g., services, headerLinks)
+    // arrayKey: the top-level key in ContentState (e.g., 'services', 'headerLinks')
+    // id: the id of the item within that array to update
+    // field: the property of the item to update (e.g., 'title', 'url')
+    const handleArrayItemChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>, arrayKey: keyof ContentState, id: string, field: string) => {
+        const { value } = e.target;
+        setLocalContent(prevContent => ({
+            ...prevContent,
+            [arrayKey]: (prevContent[arrayKey] as any[]).map(item =>
+                item.id === id ? { ...item, [field]: value } : item
+            )
+        }));
+    }, []);
+
+    // Handles adding a new item to an array
+    const handleAddItem = useCallback((arrayKey: keyof ContentState, defaultItem: any) => {
+        setLocalContent(prevContent => ({
+            ...prevContent,
+            [arrayKey]: [...(prevContent[arrayKey] as any[]), { ...defaultItem, id: generateUniqueId() }]
+        }));
+    }, []);
+
+    // Handles removing an item from an array
+    const handleRemoveItem = useCallback((arrayKey: keyof ContentState, id: string) => {
+        setLocalContent(prevContent => ({
+            ...prevContent,
+            [arrayKey]: (prevContent[arrayKey] as any[]).filter(item => item.id !== id)
+        }));
+    }, []);
+
+    // Specific handler for IconSetting objects within floatingButtons
+    const handleIconSettingChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>, iconName: keyof typeof localContent.floatingButtons) => {
+        const { name, value } = e.target;
+        setLocalContent(prevContent => ({
+            ...prevContent,
+            floatingButtons: {
+                ...prevContent.floatingButtons,
+                [iconName]: {
+                    ...prevContent.floatingButtons[iconName],
+                    [name]: value
+                }
+            }
+        }));
+    }, []);
+
+    // --- End Generic Handlers ---
+
+    // Handler for theme settings changes (kept from user's code)
     const handleThemeSettingChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setLocalThemeSettings(prevTheme => ({
@@ -92,7 +200,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
         }));
     }, []);
 
-    // Handler for adding a new project
+    // Handler for adding a new project (kept from user's code)
     const handleAddNewProject = useCallback((e: React.FormEvent) => {
         e.preventDefault();
         const finalCategory = isCreatingNewCategory && newCategoryName.trim() ? newCategoryName.trim() : newProject.category;
@@ -124,7 +232,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
         setSaveMessage(null); // Clear save message
     }, [newProject, isCreatingNewCategory, newCategoryName]);
 
-    // Handler for deleting a project
+    // Handler for deleting a project (kept from user's code)
     const deleteProject = useCallback((id: string) => {
         if (window.confirm('Are you sure you want to delete this project?')) {
             setLocalContent(prevContent => ({
@@ -138,13 +246,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
         }
     }, []);
 
-    // Handler for project form changes
+    // Handler for project form changes (kept from user's code)
     const handleNewProjectChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setNewProject(prev => ({ ...prev, [name]: value }));
     }, []);
 
-    // Handler for saving all changes to Firebase
+    // Handler for saving all changes to Firebase (kept from user's code)
     const handleSaveAllChanges = useCallback(async () => {
         setIsSaving(true);
         setSaveMessage(null);
@@ -203,7 +311,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
             )}
             {isOpen && (
                 <MotionDiv
-                    className="fixed right-0 top-0 h-full w-full md:w-1/2 lg:w-1/3 bg-gray-900 shadow-lg p-6 overflow-y-auto z-50 text-white"
+                    // Increased view board width: md:w-1/2 -> md:w-2/3, lg:w-1/3 -> lg:w-1/2
+                    className="fixed right-0 top-0 h-full w-full md:w-2/3 lg:w-1/2 bg-gray-900 shadow-lg p-6 overflow-y-auto z-50 text-white"
                     variants={panelVariants}
                     initial="hidden"
                     animate="visible"
@@ -234,11 +343,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                             >
                                 General
                             </button>
+                            {/* New 'Content' tab */}
                             <button
-                                className={`py-2 px-4 text-lg font-medium ${activeTab === 'theme' ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-gray-400 hover:text-white'}`}
-                                onClick={() => setActiveTab('theme')}
+                                className={`py-2 px-4 text-lg font-medium ${activeTab === 'content' ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-gray-400 hover:text-white'}`}
+                                onClick={() => setActiveTab('content')}
                             >
-                                Theme
+                                Content
                             </button>
                             <button
                                 className={`py-2 px-4 text-lg font-medium ${activeTab === 'projects' ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-gray-400 hover:text-white'}`}
@@ -246,54 +356,546 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                             >
                                 Projects
                             </button>
+                            <button
+                                className={`py-2 px-4 text-lg font-medium ${activeTab === 'theme' ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-gray-400 hover:text-white'}`}
+                                onClick={() => setActiveTab('theme')}
+                            >
+                                Theme
+                            </button>
                         </div>
 
                         {/* Tab Content */}
                         <div>
                             {activeTab === 'general' && (
-                                <CollapsibleSection title="General Site Content" defaultOpen={true}>
-                                    <label className="block mb-2">Site Name</label>
-                                    <input
-                                        type="text"
-                                        name="siteName"
-                                        value={localContent.siteName || ''}
-                                        onChange={e => handleLocalContentChange(e, 'siteName')}
-                                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                                    />
-                                    <label className="block mb-2">Tagline</label>
-                                    <input
-                                        type="text"
-                                        name="tagline"
-                                        value={localContent.tagline || ''}
-                                        onChange={e => handleLocalContentChange(e, 'tagline')}
-                                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                                    />
-                                    <label className="block mb-2">Our Mission Text</label>
-                                    <textarea
-                                        name="mission"
-                                        value={localContent.aboutUs.mission || ''}
-                                        onChange={e => handleLocalContentChange(e, 'aboutUs')}
-                                        rows={4}
-                                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                                    />
-                                    <label className="block mb-2">About Us Introduction</label>
-                                    <textarea
-                                        name="introduction"
-                                        value={localContent.aboutUs.introduction || ''}
-                                        onChange={e => handleLocalContentChange(e, 'aboutUs')}
-                                        rows={4}
-                                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                                    />
-                                    <label className="block mb-2">About Us Vision</label>
-                                    <textarea
-                                        name="vision"
-                                        value={localContent.aboutUs.vision || ''}
-                                        onChange={e => handleLocalContentChange(e, 'aboutUs')}
-                                        rows={4}
-                                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                                    />
-                                    {/* Add other general text fields here as needed */}
-                                </CollapsibleSection>
+                                <>
+                                    <CollapsibleSection title="General Site Content" defaultOpen={true}>
+                                        <label className="block mb-2">Site Name</label>
+                                        <input
+                                            type="text"
+                                            name="siteName"
+                                            value={localContent.siteName || ''}
+                                            onChange={e => setLocalContent(prev => ({ ...prev, siteName: e.target.value }))}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        />
+                                        <label className="block mb-2">Tagline</label>
+                                        <input
+                                            type="text"
+                                            name="tagline"
+                                            value={localContent.tagline || ''}
+                                            onChange={e => setLocalContent(prev => ({ ...prev, tagline: e.target.value }))}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        />
+                                        <label className="block mb-2">Header Logo URL</label>
+                                        <input
+                                            type="text"
+                                            name="header"
+                                            value={localContent.logos.header || ''}
+                                            onChange={e => setLocalContent(prev => ({ ...prev, logos: { ...prev.logos, header: e.target.value } }))}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        />
+                                        <label className="block mb-2">Footer Logo URL</label>
+                                        <input
+                                            type="text"
+                                            name="footer"
+                                            value={localContent.logos.footer || ''}
+                                            onChange={e => setLocalContent(prev => ({ ...prev, logos: { ...prev.logos, footer: e.target.value } }))}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        />
+                                    </CollapsibleSection>
+
+                                    <CollapsibleSection title="About Us Section" defaultOpen={true}>
+                                        <label className="block mb-2">Introduction Text</label>
+                                        <textarea
+                                            name="introduction"
+                                            value={localContent.aboutUs.introduction || ''}
+                                            onChange={e => handleContentFieldChange(e, 'aboutUs')}
+                                            rows={4}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        />
+                                        <label className="block mb-2">Mission Text</label>
+                                        <textarea
+                                            name="mission"
+                                            value={localContent.aboutUs.mission || ''}
+                                            onChange={e => handleContentFieldChange(e, 'aboutUs')}
+                                            rows={4}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        />
+                                        <label className="block mb-2">Vision Text</label>
+                                        <textarea
+                                            name="vision"
+                                            value={localContent.aboutUs.vision || ''}
+                                            onChange={e => handleContentFieldChange(e, 'aboutUs')}
+                                            rows={4}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        />
+                                        <label className="block mb-2">About Us Media Type</label>
+                                        <select
+                                            name="mediaType"
+                                            value={localContent.aboutUs.mediaType || 'none'}
+                                            onChange={e => handleContentFieldChange(e, 'aboutUs')}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        >
+                                            <option value="none">None</option>
+                                            <option value="image">Image</option>
+                                            <option value="video">Video</option>
+                                        </select>
+                                        {localContent.aboutUs.mediaType !== 'none' && (
+                                            <>
+                                                <label className="block mb-2">About Us Media URL</label>
+                                                <input
+                                                    type="text"
+                                                    name="mediaUrl"
+                                                    value={localContent.aboutUs.mediaUrl || ''}
+                                                    onChange={e => handleContentFieldChange(e, 'aboutUs')}
+                                                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                                />
+                                            </>
+                                        )}
+
+                                        <h3 className="text-xl font-semibold mb-2 mt-6">Core Values</h3>
+                                        {localContent.aboutUs.values.map((value, index) => (
+                                            <div key={value.id} className="bg-gray-800 p-3 rounded-md mb-3">
+                                                <label className="block mb-1">Title</label>
+                                                <input
+                                                    type="text"
+                                                    value={value.title}
+                                                    onChange={e => handleArrayItemChange(e, 'aboutUs', value.id, 'title')} // Needs to be smarter for nested objects
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                />
+                                                <label className="block mb-1">Description</label>
+                                                <textarea
+                                                    value={value.description}
+                                                    onChange={e => handleArrayItemChange(e, 'aboutUs', value.id, 'description')} // Needs to be smarter for nested objects
+                                                    rows={2}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                />
+                                                <label className="block mb-1">Icon</label>
+                                                <select
+                                                    value={value.icon}
+                                                    onChange={e => handleArrayItemChange(e, 'aboutUs', value.id, 'icon')} // Needs to be smarter for nested objects
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                >
+                                                    <option value="Lightbulb">Lightbulb</option>
+                                                    <option value="UsersGroup">Users Group</option>
+                                                    <option value="ShieldCheck">Shield Check</option>
+                                                </select>
+                                                <button
+                                                    onClick={() => { // Directly manipulating nested array here
+                                                        setLocalContent(prev => ({
+                                                            ...prev,
+                                                            aboutUs: {
+                                                                ...prev.aboutUs,
+                                                                values: prev.aboutUs.values.filter(item => item.id !== value.id)
+                                                            }
+                                                        }));
+                                                    }}
+                                                    className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-md text-sm"
+                                                >
+                                                    Remove Value
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <button
+                                            onClick={() => { // Directly manipulating nested array here
+                                                setLocalContent(prev => ({
+                                                    ...prev,
+                                                    aboutUs: {
+                                                        ...prev.aboutUs,
+                                                        values: [...prev.aboutUs.values, emptyAboutUsValue]
+                                                    }
+                                                }));
+                                            }}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md mt-4"
+                                        >
+                                            Add New Value
+                                        </button>
+                                    </CollapsibleSection>
+
+                                    <CollapsibleSection title="Why Choose Us Section" defaultOpen={true}>
+                                        <label className="block mb-2">Section Title</label>
+                                        <input
+                                            type="text"
+                                            name="title"
+                                            value={localContent.whyChooseUs.title || ''}
+                                            onChange={e => setLocalContent(prev => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, title: e.target.value } }))}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        />
+
+                                        <h3 className="text-xl font-semibold mb-2 mt-6">Features</h3>
+                                        {localContent.whyChooseUs.features.map((feature) => (
+                                            <div key={feature.id} className="bg-gray-800 p-3 rounded-md mb-3">
+                                                <label className="block mb-1">Title</label>
+                                                <input
+                                                    type="text"
+                                                    value={feature.title}
+                                                    onChange={e => setLocalContent(prev => ({
+                                                        ...prev,
+                                                        whyChooseUs: {
+                                                            ...prev.whyChooseUs,
+                                                            features: prev.whyChooseUs.features.map(item => item.id === feature.id ? { ...item, title: e.target.value } : item)
+                                                        }
+                                                    }))}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                />
+                                                <label className="block mb-1">Description</label>
+                                                <textarea
+                                                    value={feature.description}
+                                                    onChange={e => setLocalContent(prev => ({
+                                                        ...prev,
+                                                        whyChooseUs: {
+                                                            ...prev.whyChooseUs,
+                                                            features: prev.whyChooseUs.features.map(item => item.id === feature.id ? { ...item, description: e.target.value } : item)
+                                                        }
+                                                    }))}
+                                                    rows={2}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                />
+                                                <label className="block mb-1">Icon</label>
+                                                <select
+                                                    value={feature.icon}
+                                                    onChange={e => setLocalContent(prev => ({
+                                                        ...prev,
+                                                        whyChooseUs: {
+                                                            ...prev.whyChooseUs,
+                                                            features: prev.whyChooseUs.features.map(item => item.id === feature.id ? { ...item, icon: e.target.value as any } : item)
+                                                        }
+                                                    }))}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                >
+                                                    <option value="Innovation">Innovation</option>
+                                                    <option value="Quality">Quality</option>
+                                                    <option value="Partnership">Partnership</option>
+                                                </select>
+                                                <button
+                                                    onClick={() => setLocalContent(prev => ({
+                                                        ...prev,
+                                                        whyChooseUs: {
+                                                            ...prev.whyChooseUs,
+                                                            features: prev.whyChooseUs.features.filter(item => item.id !== feature.id)
+                                                        }
+                                                    }))}
+                                                    className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-md text-sm"
+                                                >
+                                                    Remove Feature
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <button
+                                            onClick={() => setLocalContent(prev => ({
+                                                ...prev,
+                                                whyChooseUs: {
+                                                    ...prev.whyChooseUs,
+                                                    features: [...prev.whyChooseUs.features, emptyWhyChooseUsFeature]
+                                                }
+                                            }))}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md mt-4"
+                                        >
+                                            Add New Feature
+                                        </button>
+
+                                        <h3 className="text-xl font-semibold mb-2 mt-6">Statistics</h3>
+                                        {localContent.whyChooseUs.statistics.map((stat) => (
+                                            <div key={stat.id} className="bg-gray-800 p-3 rounded-md mb-3">
+                                                <label className="block mb-1">Label</label>
+                                                <input
+                                                    type="text"
+                                                    value={stat.label}
+                                                    onChange={e => setLocalContent(prev => ({
+                                                        ...prev,
+                                                        whyChooseUs: {
+                                                            ...prev.whyChooseUs,
+                                                            statistics: prev.whyChooseUs.statistics.map(item => item.id === stat.id ? { ...item, label: e.target.value } : item)
+                                                        }
+                                                    }))}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                />
+                                                <label className="block mb-1">Value</label>
+                                                <input
+                                                    type="text"
+                                                    value={stat.value}
+                                                    onChange={e => setLocalContent(prev => ({
+                                                        ...prev,
+                                                        whyChooseUs: {
+                                                            ...prev.whyChooseUs,
+                                                            statistics: prev.whyChooseUs.statistics.map(item => item.id === stat.id ? { ...item, value: e.target.value } : item)
+                                                        }
+                                                    }))}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                />
+                                                <label className="block mb-1">Suffix</label>
+                                                <input
+                                                    type="text"
+                                                    value={stat.suffix}
+                                                    onChange={e => setLocalContent(prev => ({
+                                                        ...prev,
+                                                        whyChooseUs: {
+                                                            ...prev.whyChooseUs,
+                                                            statistics: prev.whyChooseUs.statistics.map(item => item.id === stat.id ? { ...item, suffix: e.target.value } : item)
+                                                        }
+                                                    }))}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                />
+                                                <button
+                                                    onClick={() => setLocalContent(prev => ({
+                                                        ...prev,
+                                                        whyChooseUs: {
+                                                            ...prev.whyChooseUs,
+                                                            statistics: prev.whyChooseUs.statistics.filter(item => item.id !== stat.id)
+                                                        }
+                                                    }))}
+                                                    className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-md text-sm"
+                                                >
+                                                    Remove Statistic
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <button
+                                            onClick={() => setLocalContent(prev => ({
+                                                ...prev,
+                                                whyChooseUs: {
+                                                    ...prev.whyChooseUs,
+                                                    statistics: [...prev.whyChooseUs.statistics, emptyStatistic]
+                                                }
+                                            }))}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md mt-4"
+                                        >
+                                            Add New Statistic
+                                        </button>
+                                    </CollapsibleSection>
+                                </>
+                            )}
+
+                            {activeTab === 'content' && (
+                                <>
+                                    <CollapsibleSection title="Our Services" defaultOpen={true}>
+                                        {localContent.services.map((service) => (
+                                            <div key={service.id} className="bg-gray-800 p-3 rounded-md mb-3">
+                                                <label className="block mb-1">Title</label>
+                                                <input
+                                                    type="text"
+                                                    value={service.title}
+                                                    onChange={e => handleArrayItemChange(e, 'services', service.id, 'title')}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                />
+                                                <label className="block mb-1">Description</label>
+                                                <textarea
+                                                    value={service.description}
+                                                    onChange={e => handleArrayItemChange(e, 'services', service.id, 'description')}
+                                                    rows={3}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                />
+                                                <button
+                                                    onClick={() => handleRemoveItem('services', service.id)}
+                                                    className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-md text-sm"
+                                                >
+                                                    Remove Service
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <button
+                                            onClick={() => handleAddItem('services', emptyService)}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md mt-4"
+                                        >
+                                            Add New Service
+                                        </button>
+                                    </CollapsibleSection>
+
+                                    <CollapsibleSection title="Contact Information" defaultOpen={true}>
+                                        <label className="block mb-2">Contact Form Recipient Email</label>
+                                        <input
+                                            type="email"
+                                            name="contactFormRecipientEmail"
+                                            value={localContent.contactFormRecipientEmail || ''}
+                                            onChange={e => setLocalContent(prev => ({ ...prev, contactFormRecipientEmail: e.target.value }))}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        />
+                                        <label className="block mb-2">Email Address</label>
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={localContent.contactInfo.email || ''}
+                                            onChange={e => handleContentFieldChange(e, 'contactInfo')}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        />
+                                        <label className="block mb-2">Phone Number</label>
+                                        <input
+                                            type="text"
+                                            name="phone"
+                                            value={localContent.contactInfo.phone || ''}
+                                            onChange={e => handleContentFieldChange(e, 'contactInfo')}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        />
+                                        <label className="block mb-2">Address</label>
+                                        <input
+                                            type="text"
+                                            name="address"
+                                            value={localContent.contactInfo.address || ''}
+                                            onChange={e => handleContentFieldChange(e, 'contactInfo')}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        />
+                                        <label className="block mb-2">Map Embed URL (iFrame src)</label>
+                                        <textarea
+                                            name="mapEmbedUrl"
+                                            value={localContent.contactInfo.mapEmbedUrl || ''}
+                                            onChange={e => handleContentFieldChange(e, 'contactInfo')}
+                                            rows={3}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        />
+                                    </CollapsibleSection>
+
+                                    <CollapsibleSection title="Header Links (Main Menu)" defaultOpen={true}>
+                                        {localContent.headerLinks.map((link) => (
+                                            <div key={link.id} className="bg-gray-800 p-3 rounded-md mb-3">
+                                                <label className="block mb-1">Text</label>
+                                                <input
+                                                    type="text"
+                                                    value={link.text}
+                                                    onChange={e => handleArrayItemChange(e, 'headerLinks', link.id, 'text')}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                />
+                                                <label className="block mb-1">URL</label>
+                                                <input
+                                                    type="text"
+                                                    value={link.url}
+                                                    onChange={e => handleArrayItemChange(e, 'headerLinks', link.id, 'url')}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                />
+                                                <button
+                                                    onClick={() => handleRemoveItem('headerLinks', link.id)}
+                                                    className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-md text-sm"
+                                                >
+                                                    Remove Link
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <button
+                                            onClick={() => handleAddItem('headerLinks', emptyHeaderLink)}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md mt-4"
+                                        >
+                                            Add New Link
+                                        </button>
+                                    </CollapsibleSection>
+
+                                    <CollapsibleSection title="Social Links" defaultOpen={true}>
+                                        {localContent.socialLinks.map((link) => (
+                                            <div key={link.id} className="bg-gray-800 p-3 rounded-md mb-3">
+                                                <label className="block mb-1">Name (for icon)</label>
+                                                <select
+                                                    value={link.name}
+                                                    onChange={e => handleArrayItemChange(e, 'socialLinks', link.id, 'name')}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                >
+                                                    {/* Assuming SocialIconName from types.ts provides these options */}
+                                                    <option value="Facebook">Facebook</option>
+                                                    <option value="Twitter">Twitter</option>
+                                                    <option value="Instagram">Instagram</option>
+                                                    <option value="LinkedIn">LinkedIn</option>
+                                                    <option value="YouTube">YouTube</option>
+                                                    <option value="GitHub">GitHub</option>
+                                                    {/* Add more social icon names as needed based on your SocialIconName type */}
+                                                </select>
+                                                <label className="block mb-1">URL</label>
+                                                <input
+                                                    type="text"
+                                                    value={link.url}
+                                                    onChange={e => handleArrayItemChange(e, 'socialLinks', link.id, 'url')}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                />
+                                                <button
+                                                    onClick={() => handleRemoveItem('socialLinks', link.id)}
+                                                    className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-md text-sm"
+                                                >
+                                                    Remove Social Link
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <button
+                                            onClick={() => handleAddItem('socialLinks', emptySocialLink)}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md mt-4"
+                                        >
+                                            Add New Social Link
+                                        </button>
+                                    </CollapsibleSection>
+
+                                    <CollapsibleSection title="Floating Action Buttons" defaultOpen={true}>
+                                        {Object.keys(localContent.floatingButtons).map(key => {
+                                            const iconSetting = localContent.floatingButtons[key as keyof typeof localContent.floatingButtons];
+                                            return (
+                                                <div key={key} className="bg-gray-800 p-3 rounded-md mb-3">
+                                                    <h4 className="font-semibold text-white mb-2">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</h4>
+                                                    <label className="block mb-1">Icon Type</label>
+                                                    <select
+                                                        name="type"
+                                                        value={iconSetting.type}
+                                                        onChange={e => handleIconSettingChange(e, key as keyof typeof localContent.floatingButtons)}
+                                                        className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                    >
+                                                        <option value="pre-built">Pre-built Icon</option>
+                                                        <option value="url">Image URL</option>
+                                                    </select>
+                                                    <label className="block mb-1">
+                                                        {iconSetting.type === 'pre-built' ? 'Pre-built Icon Name' : 'Image URL'}
+                                                    </label>
+                                                    {iconSetting.type === 'pre-built' ? (
+                                                        <select
+                                                            name="value"
+                                                            value={iconSetting.value}
+                                                            onChange={e => handleIconSettingChange(e, key as keyof typeof localContent.floatingButtons)}
+                                                            className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                        >
+                                                            {/* Assuming FloatingIconName from types.ts provides these options */}
+                                                            <option value="WhatsApp">WhatsApp</option>
+                                                            <option value="AiAssistant">AI Assistant</option>
+                                                            <option value="ScrollToTop">Scroll To Top</option>
+                                                            {/* Add more pre-built floating icon names as needed based on your FloatingIconName type */}
+                                                        </select>
+                                                    ) : (
+                                                        <input
+                                                            type="text"
+                                                            name="value"
+                                                            value={iconSetting.value}
+                                                            onChange={e => handleIconSettingChange(e, key as keyof typeof localContent.floatingButtons)}
+                                                            className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                        />
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </CollapsibleSection>
+
+                                    <CollapsibleSection title="Legal Pages" defaultOpen={true}>
+                                        {localContent.legalPages.map((page) => (
+                                            <div key={page.id} className="bg-gray-800 p-3 rounded-md mb-3">
+                                                <label className="block mb-1">Title</label>
+                                                <input
+                                                    type="text"
+                                                    value={page.title}
+                                                    onChange={e => handleArrayItemChange(e, 'legalPages', page.id, 'title')}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                />
+                                                <label className="block mb-1">URL</label>
+                                                <input
+                                                    type="text"
+                                                    value={page.url}
+                                                    onChange={e => handleArrayItemChange(e, 'legalPages', page.id, 'url')}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                />
+                                                <button
+                                                    onClick={() => handleRemoveItem('legalPages', page.id)}
+                                                    className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-md text-sm"
+                                                >
+                                                    Remove Page
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <button
+                                            onClick={() => handleAddItem('legalPages', emptyLegalPage)}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md mt-4"
+                                        >
+                                            Add New Legal Page
+                                        </button>
+                                    </CollapsibleSection>
+                                </>
                             )}
 
                             {activeTab === 'theme' && (
@@ -313,7 +915,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="primaryColor"
                                         value={localThemeSettings.primaryColor || '#FF4C60'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" {/* Reduced h-10 to h-8 */}
                                     />
                                     <label className="block mb-2">Secondary Color</label>
                                     <input
@@ -321,7 +923,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="secondaryColor"
                                         value={localThemeSettings.secondaryColor || '#17D161'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" {/* Reduced h-10 to h-8 */}
                                     />
 
                                     <label className="block mb-2">Dark Mode Background Color</label>
@@ -330,7 +932,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="darkModeBgColor"
                                         value={localThemeSettings.darkModeBgColor || '#1A1A1A'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" {/* Reduced h-10 to h-8 */}
                                     />
                                     <label className="block mb-2">Dark Mode Heading Color</label>
                                     <input
@@ -338,7 +940,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="darkModeHeadingColor"
                                         value={localThemeSettings.darkModeHeadingColor || '#FFFFFF'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" {/* Reduced h-10 to h-8 */}
                                     />
                                     <label className="block mb-2">Dark Mode Text Color</label>
                                     <input
@@ -346,7 +948,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="darkModeTextColor"
                                         value={localThemeSettings.darkModeTextColor || '#F0F0F0'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" {/* Reduced h-10 to h-8 */}
                                     />
                                     <label className="block mb-2">Light Mode Background Color</label>
                                     <input
@@ -354,7 +956,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="lightModeBgColor"
                                         value={localThemeSettings.lightModeBgColor || '#FFFFFF'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" {/* Reduced h-10 to h-8 */}
                                     />
                                     <label className="block mb-2">Light Mode Heading Color</label>
                                     <input
@@ -362,7 +964,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="lightModeHeadingColor"
                                         value={localThemeSettings.lightModeHeadingColor || '#333333'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" {/* Reduced h-10 to h-8 */}
                                     />
                                     <label className="block mb-2">Light Mode Text Color</label>
                                     <input
@@ -370,7 +972,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="lightModeTextColor"
                                         value={localThemeSettings.lightModeTextColor || '#555555'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" {/* Reduced h-10 to h-8 */}
                                     />
                                     <label className="block mb-2">Dynamic Title Color Start</label>
                                     <input
@@ -378,7 +980,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="dynamicTitleColorStart"
                                         value={localThemeSettings.dynamicTitleColorStart || '#FF4C60'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" {/* Reduced h-10 to h-8 */}
                                     />
                                     <label className="block mb-2">Dynamic Title Color End</label>
                                     <input
@@ -386,7 +988,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="dynamicTitleColorEnd"
                                         value={localThemeSettings.dynamicTitleColorEnd || '#17D161'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" {/* Reduced h-10 to h-8 */}
                                     />
                                     <label className="block mb-2">Glow Animation (CSS string)</label>
                                     <input
@@ -403,7 +1005,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="glowColor"
                                         value={localThemeSettings.glowColor || '#FF4C60'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" {/* Reduced h-10 to h-8 */}
                                     />
                                 </CollapsibleSection>
                             )}
@@ -537,15 +1139,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                     </div>
                                 </CollapsibleSection>
                             )}
-                        </div> {/* End Tab Content */}
+                        </div>
+                    </div>
 
-
-                      {/* Save Changes Button (outside tab content so it's always visible) */}
+                    <div className="mt-8 pt-6 border-t border-gray-700">
                         <button
                             onClick={handleSaveAllChanges}
                             disabled={isSaving}
-                            // Replace the entire className line below with the one provided above
-                            className={`w-full py-3 px-6 rounded-lg text-lg font-bold transition-colors ${isSaving ? 'bg-gray-500 cursor-not-allowed' : 'bg-brand-primary hover:bg-brand-secondary'} text-white mt-8`}
+                            className={`w-full py-3 px-6 rounded-lg text-lg font-bold transition-colors ${
+                                isSaving ? 'bg-gray-500 cursor-not-allowed' : 'bg-brand-primary hover:bg-brand-secondary'
+                            } text-white`}
                         >
                             {isSaving ? 'Saving...' : 'Save All Changes'}
                         </button>
@@ -560,8 +1163,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                             </motion.p>
                         )}
                         {/* Display global loading/error from context */}
-                        {loading && <p className="mt-2 text-center text-yellow-400 text-sm">Loading initial data...</p>
-                        }
+                        {loading && <p className="mt-2 text-center text-yellow-400 text-sm">Loading initial data...</p>}
                         {error && <p className="mt-2 text-center text-red-400 text-sm">Error loading data: {error.message}</p>}
                     </div>
                 </MotionDiv>
