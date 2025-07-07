@@ -8,11 +8,10 @@ import {
 import { useContent } from '../../hooks/useContent';
 
 // Helper function to generate a unique ID
-// This is a simple timestamp + random string. For very high-volume apps, consider a dedicated UUID library.
 const generateUniqueId = () => `p-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
 const emptyProject: Project = {
-    id: generateUniqueId(), // Use the helper to generate ID for new project forms
+    id: generateUniqueId(),
     title: '',
     description: '',
     mediaUrl: '',
@@ -27,6 +26,7 @@ interface AdminPanelProps {
     onClose: () => void;
 }
 
+// CollapsibleSection is still useful for organizing content WITHIN a tab
 const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode, defaultOpen?: boolean }> = ({ title, children, defaultOpen = false }) => (
     <details className="bg-gray-700/50 rounded-lg open:bg-gray-800 p-4 mb-4" open={defaultOpen}>
         <summary className="text-white font-semibold text-lg cursor-pointer outline-none focus:outline-none">
@@ -39,7 +39,7 @@ const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode, d
 );
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
-    const { user, signOut } = useAuth(); // Assuming useAuth provides user and signOut
+    const { user, signOut } = useAuth();
     const { content: fetchedContent, themeSettings: fetchedThemeSettings, loading, error, saveContentToDb } = useContent();
 
     const [localContent, setLocalContent] = useState<ContentState>(fetchedContent);
@@ -49,11 +49,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
     const [newProject, setNewProject] = useState<Project>(emptyProject);
     const [isCreatingNewCategory, setIsCreatingNewCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
+    const [activeTab, setActiveTab] = useState<'general' | 'theme' | 'projects'>('general'); // New state for tabs
 
     // Sync fetched data with local state whenever fetched data changes
     useEffect(() => {
-        // This effect runs when content from Firebase changes.
-        // It's important for initial load and for external changes.
         setLocalContent(fetchedContent);
         setLocalThemeSettings(fetchedThemeSettings);
     }, [fetchedContent, fetchedThemeSettings]);
@@ -68,42 +67,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
     const handleLocalContentChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, path: string) => {
         const { name, value } = e.target;
         setLocalContent(prevContent => {
-            const updatedContent = { ...prevContent };
-            // Simple path handling for direct properties
-            // For nested objects, you'd need a more robust deep update function
-            if (path === 'aboutUs' && name === 'mission') {
+            if (path === 'aboutUs') {
                 return {
                     ...prevContent,
-                    aboutUs: { ...prevContent.aboutUs, mission: value }
+                    aboutUs: { ...prevContent.aboutUs, [name]: value }
                 };
             }
-            if (path === 'aboutUs' && name === 'introduction') {
-                 return {
-                    ...prevContent,
-                    aboutUs: { ...prevContent.aboutUs, introduction: value }
-                };
-            }
-            if (path === 'aboutUs' && name === 'vision') {
-                 return {
-                    ...prevContent,
-                    aboutUs: { ...prevContent.aboutUs, vision: value }
-                };
-            }
-            if (path === 'siteName' && name === 'siteName') { // Handle siteName directly
+            if (name === 'siteName' || name === 'tagline') {
                 return {
                     ...prevContent,
-                    siteName: value
+                    [name]: value
                 };
             }
-            if (path === 'tagline' && name === 'tagline') { // Handle tagline directly
-                return {
-                    ...prevContent,
-                    tagline: value
-                };
-            }
-            // Add more specific path handlers as needed for other direct text fields
-            // For more complex nested updates, consider a utility like `immer` or a deep-set function.
-            return updatedContent; // Return the unchanged state if path/name combo not handled
+            return prevContent; // Return the unchanged state if path/name combo not handled
         });
     }, []);
 
@@ -245,309 +221,332 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                         <p className="text-gray-300">Welcome, {user.email}!</p>
                         <button
                             onClick={handleSignOut}
-                            className="w-full py-2 px-4 bg-red-600 hover:bg-red-700 rounded-lg text-white font-semibold transition-colors"
+                            className="w-full py-2 px-4 bg-red-600 hover:bg-red-700 rounded-lg text-white font-semibold transition-colors mb-4"
                         >
                             Sign Out
                         </button>
 
-                        {/* General Site Content */}
-                        <CollapsibleSection title="General Site Content" defaultOpen={true}>
-                            <label className="block mb-2">Site Name</label>
-                            <input
-                                type="text"
-                                name="siteName"
-                                value={localContent.siteName || ''}
-                                onChange={e => handleLocalContentChange(e, 'siteName')}
-                                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                            <label className="block mb-2">Tagline</label>
-                            <input
-                                type="text"
-                                name="tagline"
-                                value={localContent.tagline || ''}
-                                onChange={e => handleLocalContentChange(e, 'tagline')}
-                                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                            {/* Mission text */}
-                            <label className="block mb-2">Our Mission Text</label>
-                            <textarea
-                                name="mission"
-                                value={localContent.aboutUs.mission || ''}
-                                onChange={e => handleLocalContentChange(e, 'aboutUs')}
-                                rows={4}
-                                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                            {/* Introduction text */}
-                            <label className="block mb-2">About Us Introduction</label>
-                            <textarea
-                                name="introduction"
-                                value={localContent.aboutUs.introduction || ''}
-                                onChange={e => handleLocalContentChange(e, 'aboutUs')}
-                                rows={4}
-                                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                            {/* Vision text */}
-                            <label className="block mb-2">About Us Vision</label>
-                            <textarea
-                                name="vision"
-                                value={localContent.aboutUs.vision || ''}
-                                onChange={e => handleLocalContentChange(e, 'aboutUs')}
-                                rows={4}
-                                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                            {/* Add other general text fields here as needed */}
-                        </CollapsibleSection>
+                        {/* Tab Navigation */}
+                        <div className="flex border-b border-gray-700 mb-4">
+                            <button
+                                className={`py-2 px-4 text-lg font-medium ${activeTab === 'general' ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-gray-400 hover:text-white'}`}
+                                onClick={() => setActiveTab('general')}
+                            >
+                                General
+                            </button>
+                            <button
+                                className={`py-2 px-4 text-lg font-medium ${activeTab === 'theme' ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-gray-400 hover:text-white'}`}
+                                onClick={() => setActiveTab('theme')}
+                            >
+                                Theme
+                            </button>
+                            <button
+                                className={`py-2 px-4 text-lg font-medium ${activeTab === 'projects' ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-gray-400 hover:text-white'}`}
+                                onClick={() => setActiveTab('projects')}
+                            >
+                                Projects
+                            </button>
+                        </div>
 
+                        {/* Tab Content */}
+                        <div>
+                            {activeTab === 'general' && (
+                                <CollapsibleSection title="General Site Content" defaultOpen={true}>
+                                    <label className="block mb-2">Site Name</label>
+                                    <input
+                                        type="text"
+                                        name="siteName"
+                                        value={localContent.siteName || ''}
+                                        onChange={e => handleLocalContentChange(e, 'siteName')}
+                                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">Tagline</label>
+                                    <input
+                                        type="text"
+                                        name="tagline"
+                                        value={localContent.tagline || ''}
+                                        onChange={e => handleLocalContentChange(e, 'tagline')}
+                                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">Our Mission Text</label>
+                                    <textarea
+                                        name="mission"
+                                        value={localContent.aboutUs.mission || ''}
+                                        onChange={e => handleLocalContentChange(e, 'aboutUs')}
+                                        rows={4}
+                                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">About Us Introduction</label>
+                                    <textarea
+                                        name="introduction"
+                                        value={localContent.aboutUs.introduction || ''}
+                                        onChange={e => handleLocalContentChange(e, 'aboutUs')}
+                                        rows={4}
+                                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">About Us Vision</label>
+                                    <textarea
+                                        name="vision"
+                                        value={localContent.aboutUs.vision || ''}
+                                        onChange={e => handleLocalContentChange(e, 'aboutUs')}
+                                        rows={4}
+                                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    {/* Add other general text fields here as needed */}
+                                </CollapsibleSection>
+                            )}
 
-                        {/* Theme Settings - NOW WITH ALL OPTIONS */}
-                        <CollapsibleSection title="Theme Settings">
-                            <label className="block mb-2">Font Family (CSS string)</label>
-                            <input
-                                type="text"
-                                name="fontFamily"
-                                value={localThemeSettings.fontFamily || ''}
-                                onChange={handleThemeSettingChange}
-                                placeholder="'Roboto', sans-serif"
-                                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                            <label className="block mb-2">Primary Color</label>
-                            <input
-                                type="color"
-                                name="primaryColor"
-                                value={localThemeSettings.primaryColor || '#FF4C60'}
-                                onChange={handleThemeSettingChange}
-                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                            <label className="block mb-2">Secondary Color</label>
-                            <input
-                                type="color"
-                                name="secondaryColor"
-                                value={localThemeSettings.secondaryColor || '#17D161'}
-                                onChange={handleThemeSettingChange}
-                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
+                            {activeTab === 'theme' && (
+                                <CollapsibleSection title="Theme Settings" defaultOpen={true}>
+                                    <label className="block mb-2">Font Family (CSS string)</label>
+                                    <input
+                                        type="text"
+                                        name="fontFamily"
+                                        value={localThemeSettings.fontFamily || ''}
+                                        onChange={handleThemeSettingChange}
+                                        placeholder="'Roboto', sans-serif"
+                                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">Primary Color</label>
+                                    <input
+                                        type="color"
+                                        name="primaryColor"
+                                        value={localThemeSettings.primaryColor || '#FF4C60'}
+                                        onChange={handleThemeSettingChange}
+                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">Secondary Color</label>
+                                    <input
+                                        type="color"
+                                        name="secondaryColor"
+                                        value={localThemeSettings.secondaryColor || '#17D161'}
+                                        onChange={handleThemeSettingChange}
+                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
 
-                            {/* Added Missing Theme Options */}
-                            <label className="block mb-2">Dark Mode Background Color</label>
-                            <input
-                                type="color"
-                                name="darkModeBgColor"
-                                value={localThemeSettings.darkModeBgColor || '#1A1A1A'}
-                                onChange={handleThemeSettingChange}
-                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                            <label className="block mb-2">Dark Mode Heading Color</label>
-                            <input
-                                type="color"
-                                name="darkModeHeadingColor"
-                                value={localThemeSettings.darkModeHeadingColor || '#FFFFFF'}
-                                onChange={handleThemeSettingChange}
-                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                            <label className="block mb-2">Dark Mode Text Color</label>
-                            <input
-                                type="color"
-                                name="darkModeTextColor"
-                                value={localThemeSettings.darkModeTextColor || '#F0F0F0'}
-                                onChange={handleThemeSettingChange}
-                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                            <label className="block mb-2">Light Mode Background Color</label>
-                            <input
-                                type="color"
-                                name="lightModeBgColor"
-                                value={localThemeSettings.lightModeBgColor || '#FFFFFF'}
-                                onChange={handleThemeSettingChange}
-                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                            <label className="block mb-2">Light Mode Heading Color</label>
-                            <input
-                                type="color"
-                                name="lightModeHeadingColor"
-                                value={localThemeSettings.lightModeHeadingColor || '#333333'}
-                                onChange={handleThemeSettingChange}
-                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                            <label className="block mb-2">Light Mode Text Color</label>
-                            <input
-                                type="color"
-                                name="lightModeTextColor"
-                                value={localThemeSettings.lightModeTextColor || '#555555'}
-                                onChange={handleThemeSettingChange}
-                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                            <label className="block mb-2">Dynamic Title Color Start</label>
-                            <input
-                                type="color"
-                                name="dynamicTitleColorStart"
-                                value={localThemeSettings.dynamicTitleColorStart || '#FF4C60'}
-                                onChange={handleThemeSettingChange}
-                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                            <label className="block mb-2">Dynamic Title Color End</label>
-                            <input
-                                type="color"
-                                name="dynamicTitleColorEnd"
-                                value={localThemeSettings.dynamicTitleColorEnd || '#17D161'}
-                                onChange={handleThemeSettingChange}
-                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                             <label className="block mb-2">Glow Animation (CSS string)</label>
-                            <input
-                                type="text"
-                                name="glowAnimation"
-                                value={localThemeSettings.glowAnimation || 'pulse'}
-                                onChange={handleThemeSettingChange}
-                                placeholder="e.g., pulse, spin"
-                                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                            <label className="block mb-2">Glow Color</label>
-                            <input
-                                type="color"
-                                name="glowColor"
-                                value={localThemeSettings.glowColor || '#FF4C60'}
-                                onChange={handleThemeSettingChange}
-                                className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                            />
-                        </CollapsibleSection>
+                                    <label className="block mb-2">Dark Mode Background Color</label>
+                                    <input
+                                        type="color"
+                                        name="darkModeBgColor"
+                                        value={localThemeSettings.darkModeBgColor || '#1A1A1A'}
+                                        onChange={handleThemeSettingChange}
+                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">Dark Mode Heading Color</label>
+                                    <input
+                                        type="color"
+                                        name="darkModeHeadingColor"
+                                        value={localThemeSettings.darkModeHeadingColor || '#FFFFFF'}
+                                        onChange={handleThemeSettingChange}
+                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">Dark Mode Text Color</label>
+                                    <input
+                                        type="color"
+                                        name="darkModeTextColor"
+                                        value={localThemeSettings.darkModeTextColor || '#F0F0F0'}
+                                        onChange={handleThemeSettingChange}
+                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">Light Mode Background Color</label>
+                                    <input
+                                        type="color"
+                                        name="lightModeBgColor"
+                                        value={localThemeSettings.lightModeBgColor || '#FFFFFF'}
+                                        onChange={handleThemeSettingChange}
+                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">Light Mode Heading Color</label>
+                                    <input
+                                        type="color"
+                                        name="lightModeHeadingColor"
+                                        value={localThemeSettings.lightModeHeadingColor || '#333333'}
+                                        onChange={handleThemeSettingChange}
+                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">Light Mode Text Color</label>
+                                    <input
+                                        type="color"
+                                        name="lightModeTextColor"
+                                        value={localThemeSettings.lightModeTextColor || '#555555'}
+                                        onChange={handleThemeSettingChange}
+                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">Dynamic Title Color Start</label>
+                                    <input
+                                        type="color"
+                                        name="dynamicTitleColorStart"
+                                        value={localThemeSettings.dynamicTitleColorStart || '#FF4C60'}
+                                        onChange={handleThemeSettingChange}
+                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">Dynamic Title Color End</label>
+                                    <input
+                                        type="color"
+                                        name="dynamicTitleColorEnd"
+                                        value={localThemeSettings.dynamicTitleColorEnd || '#17D161'}
+                                        onChange={handleThemeSettingChange}
+                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">Glow Animation (CSS string)</label>
+                                    <input
+                                        type="text"
+                                        name="glowAnimation"
+                                        value={localThemeSettings.glowAnimation || 'pulse'}
+                                        onChange={handleThemeSettingChange}
+                                        placeholder="e.g., pulse, spin"
+                                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">Glow Color</label>
+                                    <input
+                                        type="color"
+                                        name="glowColor"
+                                        value={localThemeSettings.glowColor || '#FF4C60'}
+                                        onChange={handleThemeSettingChange}
+                                        className="w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                </CollapsibleSection>
+                            )}
 
-                        {/* Project Management Section */}
-                        <CollapsibleSection title="Project Management" defaultOpen={true}>
-                            <h3 className="text-xl font-semibold mb-4">Add New Project</h3>
-                            <form onSubmit={handleAddNewProject} className="space-y-4 mb-8">
-                                <label className="block">Project Title</label>
-                                <input
-                                    type="text"
-                                    name="title"
-                                    value={newProject.title}
-                                    onChange={handleNewProjectChange}
-                                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white"
-                                    required
-                                />
-
-                                <label className="block">Project Description</label>
-                                <textarea
-                                    name="description"
-                                    value={newProject.description}
-                                    onChange={handleNewProjectChange}
-                                    rows={3}
-                                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white"
-                                    required
-                                />
-
-                                <label className="block">Project Media URL (Image/Video)</label>
-                                <input
-                                    type="text"
-                                    name="mediaUrl"
-                                    value={newProject.mediaUrl}
-                                    onChange={handleNewProjectChange}
-                                    placeholder="e.g., https://example.com/image.jpg"
-                                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white"
-                                    required
-                                />
-
-                                <label className="block">Media Type</label>
-                                <select
-                                    name="mediaType"
-                                    value={newProject.mediaType}
-                                    onChange={handleNewProjectChange}
-                                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white"
-                                >
-                                    <option value="image">Image</option>
-                                    <option value="video">Video</option>
-                                </select>
-
-                                <label className="block">Project URL (External Link)</label>
-                                <input
-                                    type="url"
-                                    name="projectUrl"
-                                    value={newProject.projectUrl}
-                                    onChange={handleNewProjectChange}
-                                    placeholder="e.g., https://www.yourproject.com"
-                                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white"
-                                />
-
-                                <label className="block">Project Category</label>
-                                {isCreatingNewCategory ? (
-                                    <>
+                            {activeTab === 'projects' && (
+                                <CollapsibleSection title="Project Management" defaultOpen={true}>
+                                    <h3 className="text-xl font-semibold mb-4">Add New Project</h3>
+                                    <form onSubmit={handleAddNewProject} className="space-y-4 mb-8">
+                                        <label className="block">Project Title</label>
                                         <input
                                             type="text"
-                                            value={newCategoryName}
-                                            onChange={(e) => setNewCategoryName(e.target.value)}
-                                            placeholder="Enter new category name"
-                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                            name="title"
+                                            value={newProject.title}
+                                            onChange={handleNewProjectChange}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white"
                                             required
                                         />
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsCreatingNewCategory(false)}
-                                            className="text-sm text-brand-secondary hover:underline"
-                                        >
-                                            Use existing categories
-                                        </button>
-                                    </>
-                                ) : (
-                                    <div className="flex flex-wrap gap-2 mb-2">
-                                        <select
-                                            name="category"
-                                            value={newProject.category}
+
+                                        <label className="block">Project Description</label>
+                                        <textarea
+                                            name="description"
+                                            value={newProject.description}
                                             onChange={handleNewProjectChange}
-                                            className="p-3 bg-gray-700 border border-gray-600 rounded-md text-white flex-grow"
+                                            rows={3}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white"
+                                            required
+                                        />
+
+                                        <label className="block">Project Media URL (Image/Video)</label>
+                                        <input
+                                            type="text"
+                                            name="mediaUrl"
+                                            value={newProject.mediaUrl}
+                                            onChange={handleNewProjectChange}
+                                            placeholder="e.g., https://example.com/image.jpg"
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white"
+                                            required
+                                        />
+
+                                        <label className="block">Media Type</label>
+                                        <select
+                                            name="mediaType"
+                                            value={newProject.mediaType}
+                                            onChange={handleNewProjectChange}
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white"
                                         >
-                                            {projectCategories.map(cat => (
-                                                <option key={cat} value={cat}>{cat}</option>
-                                            ))}
+                                            <option value="image">Image</option>
+                                            <option value="video">Video</option>
                                         </select>
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsCreatingNewCategory(true)}
-                                            className="py-2 px-4 bg-brand-primary hover:bg-brand-secondary text-white rounded-md text-sm"
-                                        >
-                                            + New Category
-                                        </button>
-                                    </div>
-                                )}
 
+                                        <label className="block">Project URL (External Link)</label>
+                                        <input
+                                            type="url"
+                                            name="projectUrl"
+                                            value={newProject.projectUrl}
+                                            onChange={handleNewProjectChange}
+                                            placeholder="e.g., https://www.yourproject.com"
+                                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white"
+                                        />
 
-                                <button
-                                    type="submit"
-                                    className="w-full py-3 px-6 rounded-lg text-lg font-bold bg-green-600 hover:bg-green-700 text-white transition-colors"
-                                >
-                                    Add Project
-                                </button>
-                            </form>
-
-                            <h3 className="text-xl font-semibold mb-4">Existing Projects</h3>
-                            <div className="space-y-4">
-                                {localContent.latestProjects.projects.length === 0 ? (
-                                    <p className="text-gray-400">No projects added yet.</p>
-                                ) : (
-                                    localContent.latestProjects.projects.map((project) => (
-                                        <div key={project.id} className="bg-gray-800 p-4 rounded-lg flex justify-between items-center">
-                                            <div>
-                                                <h4 className="font-semibold text-white">{project.title} ({project.category})</h4>
-                                                <p className="text-gray-400 text-sm">{project.description}</p>
+                                        <label className="block">Project Category</label>
+                                        {isCreatingNewCategory ? (
+                                            <>
+                                                <input
+                                                    type="text"
+                                                    value={newCategoryName}
+                                                    onChange={(e) => setNewCategoryName(e.target.value)}
+                                                    placeholder="Enter new category name"
+                                                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                    required
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsCreatingNewCategory(false)}
+                                                    className="text-sm text-brand-secondary hover:underline"
+                                                >
+                                                    Use existing categories
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-wrap gap-2 mb-2">
+                                                <select
+                                                    name="category"
+                                                    value={newProject.category}
+                                                    onChange={handleNewProjectChange}
+                                                    className="p-3 bg-gray-700 border border-gray-600 rounded-md text-white flex-grow"
+                                                >
+                                                    {projectCategories.map(cat => (
+                                                        <option key={cat} value={cat}>{cat}</option>
+                                                    ))}
+                                                </select>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsCreatingNewCategory(true)}
+                                                    className="py-2 px-4 bg-brand-primary hover:bg-brand-secondary text-white rounded-md text-sm"
+                                                >
+                                                    + New Category
+                                                </button>
                                             </div>
-                                            <button
-                                                onClick={() => deleteProject(project.id)}
-                                                className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md text-sm transition-colors"
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </CollapsibleSection>
+                                        )}
 
 
-                        {/* Save Changes Button */}
+                                        <button
+                                            type="submit"
+                                            className="w-full py-3 px-6 rounded-lg text-lg font-bold bg-green-600 hover:bg-green-700 text-white transition-colors"
+                                        >
+                                            Add Project
+                                        </button>
+                                    </form>
+
+                                    <h3 className="text-xl font-semibold mb-4">Existing Projects</h3>
+                                    <div className="space-y-4">
+                                        {localContent.latestProjects.projects.length === 0 ? (
+                                            <p className="text-gray-400">No projects added yet.</p>
+                                        ) : (
+                                            localContent.latestProjects.projects.map((project) => (
+                                                <div key={project.id} className="bg-gray-800 p-4 rounded-lg flex justify-between items-center">
+                                                    <div>
+                                                        <h4 className="font-semibold text-white">{project.title} ({project.category})</h4>
+                                                        <p className="text-gray-400 text-sm">{project.description}</p>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => deleteProject(project.id)}
+                                                        className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md text-sm transition-colors"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </CollapsibleSection>
+                            )}
+                        </div> {/* End Tab Content */}
+
+
+                        {/* Save Changes Button (outside tab content so it's always visible) */}
                         <button
                             onClick={handleSaveAllChanges}
                             disabled={isSaving}
                             className={`w-full py-3 px-6 rounded-lg text-lg font-bold transition-colors ${
                                 isSaving ? 'bg-gray-500 cursor-not-allowed' : 'bg-brand-primary hover:bg-brand-secondary'
-                            } text-white`}
+                            } text-white mt-8`} {/* Added mt-8 for spacing */}
                         >
                             {isSaving ? 'Saving...' : 'Save All Changes'}
                         </button>
