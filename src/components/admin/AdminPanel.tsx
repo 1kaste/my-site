@@ -544,9 +544,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                         <button
                             onClick={handleSaveAllChanges}
                             disabled={isSaving}
-                            className={`w-full py-3 px-6 rounded-lg text-lg font-bold transition-colors ${
-                                isSaving ? 'bg-gray-500 cursor-not-allowed' : 'bg-brand-primary hover:bg-brand-secondary'
-                           } text-white mt-8`} {/* Corrected this line */}
+                            // Replace the entire className line below with the one provided above
+                            className={`w-full py-3 px-6 rounded-lg text-lg font-bold transition-colors ${isSaving ? 'bg-gray-500 cursor-not-allowed' : 'bg-brand-primary hover:bg-brand-secondary'} text-white mt-8`}
                         >
                             {isSaving ? 'Saving...' : 'Save All Changes'}
                         </button>
