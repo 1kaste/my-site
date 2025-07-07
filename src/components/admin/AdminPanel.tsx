@@ -3,17 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { CloseIcon } from '../ui/icons';
 import {
-    Project, ContentState, ThemeSettings, // Keep these
-    WhyChooseUsFeature, Statistic, LegalPage, SocialLink, Link as HeaderLink, Service, IconSetting, // Renamed Link to HeaderLink to avoid conflict
-    SocialIconName, FloatingIconName // Assuming these are still needed for dropdowns
-} from '../../types'; // Assuming types.ts has these
+    Project, ContentState, ThemeSettings,
+    WhyChooseUsFeature, Statistic, LegalPage, SocialLink, Link as HeaderLink, Service, IconSetting,
+    SocialIconName, FloatingIconName
+} from '../../types';
 
 import { useContent } from '../../hooks/useContent';
 
-// Helper function to generate a unique ID
 const generateUniqueId = () => `id-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-// Define default empty structures for new items (ensuring consistent IDs)
 const emptyProject: Project = {
     id: generateUniqueId(),
     title: '',
@@ -39,7 +37,7 @@ const emptyHeaderLink: HeaderLink = {
 
 const emptySocialLink: SocialLink = {
     id: generateUniqueId(),
-    name: 'Facebook', // Default to a common one, ensure it's a valid SocialIconName
+    name: 'Facebook',
     url: ''
 };
 
@@ -47,7 +45,7 @@ const emptyWhyChooseUsFeature: WhyChooseUsFeature = {
     id: generateUniqueId(),
     title: '',
     description: '',
-    icon: 'Innovation' // Default icon, ensure it's a valid WhyChooseUsFeature icon
+    icon: 'Innovation'
 };
 
 const emptyStatistic: Statistic = {
@@ -61,21 +59,19 @@ const emptyAboutUsValue: { id: string; title: string; description: string; icon:
     id: generateUniqueId(),
     title: '',
     description: '',
-    icon: 'Lightbulb' // Default icon, ensure it's a valid AboutUsValue icon
+    icon: 'Lightbulb'
 };
 
-// Assuming LegalPage also has an 'id' and 'url' now based on usage in CollapsibleSection
 const emptyLegalPage: LegalPage = {
     id: generateUniqueId(),
     title: '',
-    lastUpdated: new Date().toISOString().split('T')[0], // Set default to current date
+    lastUpdated: new Date().toISOString().split('T')[0],
     content: ''
 };
 
-// Default for a new icon setting (e.g., if you were to add a new floating button type)
 const defaultIconSetting: IconSetting = {
     type: 'pre-built',
-    value: 'WhatsApp' // Default value for a pre-built icon
+    value: 'WhatsApp'
 };
 
 interface AdminPanelProps {
@@ -83,7 +79,6 @@ interface AdminPanelProps {
     onClose: () => void;
 }
 
-// CollapsibleSection is still useful for organizing content WITHIN a tab
 const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode, defaultOpen?: boolean }> = ({ title, children, defaultOpen = false }) => (
     <details className="bg-gray-700/50 rounded-lg open:bg-gray-800 p-4 mb-4" open={defaultOpen}>
         <summary className="text-white font-semibold text-lg cursor-pointer outline-none focus:outline-none">
@@ -106,56 +101,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
     const [newProject, setNewProject] = useState<Project>(emptyProject);
     const [isCreatingNewCategory, setIsCreatingNewCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
-    // Added 'content' tab
     const [activeTab, setActiveTab] = useState<'general' | 'content' | 'theme' | 'projects'>('general');
 
-    // Refs for auto-scrolling
     const [scrollToId, setScrollToId] = useState<string | null>(null);
     const itemRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
 
-    // Sync fetched data with local state whenever fetched data changes
     useEffect(() => {
         setLocalContent(fetchedContent);
         setLocalThemeSettings(fetchedThemeSettings);
     }, [fetchedContent, fetchedThemeSettings]);
 
-    // Effect for auto-scrolling to newly added items
     useEffect(() => {
         if (scrollToId && itemRefs.current[scrollToId]) {
             itemRefs.current[scrollToId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Optionally, focus the first input field within the new item
             const firstInput = itemRefs.current[scrollToId]?.querySelector('input, textarea, select') as HTMLElement;
             if (firstInput) {
                 firstInput.focus();
             }
-            setScrollToId(null); // Reset after scrolling
+            setScrollToId(null);
         }
-    }, [scrollToId]); // Only re-run when scrollToId changes
+    }, [scrollToId]);
 
 
-    // Derived state for project categories (memoized for performance)
     const projectCategories = useMemo(() =>
         [...new Set(localContent.latestProjects.projects.map(p => p.category))].sort(),
         [localContent.latestProjects.projects]
     );
 
-    // --- Generic Handlers for Content State ---
-
-    // Handles changes for simple string/number fields at various depths using a path string
     const handleContentFieldChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>, path: string) => {
         const { name, value } = e.target;
         setLocalContent(prevContent => {
-            const newContent = JSON.parse(JSON.stringify(prevContent)); // Deep copy to ensure immutability for nested objects
+            const newContent = JSON.parse(JSON.stringify(prevContent));
             let currentLevel: any = newContent;
             const pathParts = path.split('.');
 
-            // Traverse the path to reach the correct nested object
             for (let i = 0; i < pathParts.length; i++) {
-                if (i === pathParts.length - 1) { // Last part is the field to update
+                if (i === pathParts.length - 1) {
                     currentLevel[pathParts[i]][name] = value;
                 } else {
                     if (!currentLevel[pathParts[i]]) {
-                        currentLevel[pathParts[i]] = {}; // Initialize if undefined
+                        currentLevel[pathParts[i]] = {};
                     }
                     currentLevel = currentLevel[pathParts[i]];
                 }
@@ -165,10 +150,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
         setSaveMessage('Changes pending. Click Save All Changes.');
     }, []);
 
-    // Handles changes for items within arrays (e.g., services, headerLinks)
-    // arrayKey: the top-level key in ContentState (e.g., 'services', 'headerLinks')
-    // id: the id of the item within that array to update
-    // field: the property of the item to update (e.g., 'title', 'url')
     const handleArrayItemChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>, arrayKey: keyof ContentState, id: string, field: string) => {
         const { value } = e.target;
         setLocalContent(prevContent => ({
@@ -180,18 +161,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
         setSaveMessage('Changes pending. Click Save All Changes.');
     }, []);
 
-    // Handles adding a new item to an array
     const handleAddItem = useCallback((arrayKey: keyof ContentState, defaultItem: any) => {
-        const newId = generateUniqueId(); // Generate ID for new item
+        const newId = generateUniqueId();
         setLocalContent(prevContent => ({
             ...prevContent,
             [arrayKey]: [...(prevContent[arrayKey] as any[]), { ...defaultItem, id: newId }]
         }));
         setSaveMessage('Changes pending. Click Save All Changes.');
-        setScrollToId(newId); // Set scroll target to the new item's ID
+        setScrollToId(newId);
     }, []);
 
-    // Handles removing an item from an array with confirmation
     const handleRemoveItem = useCallback((arrayKey: keyof ContentState, id: string) => {
         if (window.confirm('Are you sure you want to delete this item?')) {
             setLocalContent(prevContent => ({
@@ -202,7 +181,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
         }
     }, []);
 
-    // Specific handler for IconSetting objects within floatingButtons
     const handleIconSettingChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>, iconName: keyof typeof localContent.floatingButtons) => {
         const { name, value } = e.target;
         setLocalContent(prevContent => ({
@@ -218,9 +196,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
         setSaveMessage('Changes pending. Click Save All Changes.');
     }, []);
 
-    // --- End Generic Handlers ---
-
-    // Handler for theme settings changes (kept from user's code)
     const handleThemeSettingChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setLocalThemeSettings(prevTheme => ({
@@ -230,7 +205,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
         setSaveMessage('Changes pending. Click Save All Changes.');
     }, []);
 
-    // Handler for adding a new project (kept from user's code)
     const handleAddNewProject = useCallback((e: React.FormEvent) => {
         e.preventDefault();
         const finalCategory = isCreatingNewCategory && newCategoryName.trim() ? newCategoryName.trim() : newProject.category;
@@ -240,10 +214,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
             return;
         }
 
-        const newProjectId = generateUniqueId(); // Generate unique ID here for scroll target
+        const newProjectId = generateUniqueId();
         const projectToAdd: Project = {
             ...newProject,
-            id: newProjectId, // Ensure unique ID for the new project
+            id: newProjectId,
             category: finalCategory,
         };
 
@@ -251,22 +225,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
             ...prevContent,
             latestProjects: {
                 ...prevContent.latestProjects,
-                // Add the new project to the array of projects
                 projects: [...prevContent.latestProjects.projects, projectToAdd],
             },
         }));
 
-        // Reset form
         setNewProject(emptyProject);
         setNewCategoryName('');
         setIsCreatingNewCategory(false);
-        setSaveMessage('Changes pending. Click Save All Changes.'); // Set save message
-        setScrollToId(newProjectId); // Set scroll target to the new project
+        setSaveMessage('Changes pending. Click Save All Changes.');
+        setScrollToId(newProjectId);
     }, [newProject, isCreatingNewCategory, newCategoryName]);
 
-    // Handler for deleting a project (kept from user's code)
     const deleteProject = useCallback((id: string) => {
-        if (window.confirm('Are you sure you want to delete this project?')) { // Confirmation added
+        if (window.confirm('Are you sure you want to delete this project?')) {
             setLocalContent(prevContent => ({
                 ...prevContent,
                 latestProjects: {
@@ -274,17 +245,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                     projects: prevContent.latestProjects.projects.filter(p => p.id !== id),
                 },
             }));
-            setSaveMessage('Changes pending. Click Save All Changes.'); // Set save message after deletion
+            setSaveMessage('Changes pending. Click Save All Changes.');
         }
     }, []);
 
-    // Handler for project form changes (kept from user's code)
     const handleNewProjectChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setNewProject(prev => ({ ...prev, [name]: value }));
     }, []);
 
-    // Handler for saving all changes to Firebase (kept from user's code)
     const handleSaveAllChanges = useCallback(async () => {
         setIsSaving(true);
         setSaveMessage(null);
@@ -296,14 +265,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
             console.error("Failed to save changes:", error);
         } finally {
             setIsSaving(false);
-            setTimeout(() => setSaveMessage(null), 5000); // Clear message after 5 seconds
+            setTimeout(() => setSaveMessage(null), 5000);
         }
     }, [localContent, localThemeSettings, saveContentToDb]);
 
     const handleSignOut = useCallback(async () => {
         try {
             await signOut();
-            onClose(); // Close admin panel after sign out
+            onClose();
         } catch (error) {
             console.error("Error signing out:", error);
             alert("Failed to sign out. Please try again.");
@@ -311,10 +280,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
     }, [signOut, onClose]);
 
 
-    const MotionDiv = motion.div; // Alias for convenience
+    const MotionDiv = motion.div;
 
     if (!user) {
-        return null; // Or render a "Please log in" message
+        return null;
     }
 
     const panelVariants = {
@@ -343,7 +312,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
             )}
             {isOpen && (
                 <MotionDiv
-                    // Increased view board width: md:w-1/2 -> md:w-2/3, lg:w-1/3 -> lg:w-1/2
                     className="fixed right-0 top-0 h-full w-full md:w-2/3 lg:w-1/2 bg-gray-900 shadow-lg p-6 overflow-y-auto z-50 text-white"
                     variants={panelVariants}
                     initial="hidden"
@@ -367,7 +335,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                             Sign Out
                         </button>
 
-                        {/* Tab Navigation */}
                         <div className="flex border-b border-gray-700 mb-4">
                             <button
                                 className={`py-2 px-4 text-lg font-medium ${activeTab === 'general' ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-gray-400 hover:text-white'}`}
@@ -375,7 +342,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                             >
                                 General
                             </button>
-                            {/* New 'Content' tab */}
                             <button
                                 className={`py-2 px-4 text-lg font-medium ${activeTab === 'content' ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-gray-400 hover:text-white'}`}
                                 onClick={() => setActiveTab('content')}
@@ -396,7 +362,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                             </button>
                         </div>
 
-                        {/* Tab Content */}
                         <div>
                             {activeTab === 'general' && (
                                 <>
@@ -406,7 +371,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             type="text"
                                             name="siteName"
                                             value={localContent.siteName || ''}
-                                            onChange={e => {setLocalContent(prev => ({ ...prev, siteName: e.target.value })); setSaveMessage('Changes pending. Click Save All Changes.');}}
+                                            onChange={e => {
+                                                setLocalContent(prev => ({ ...prev, siteName: e.target.value }));
+                                                setSaveMessage('Changes pending. Click Save All Changes.');
+                                            }}
                                             className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                         />
                                         <label className="block mb-2">Tagline</label>
@@ -414,7 +382,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             type="text"
                                             name="tagline"
                                             value={localContent.tagline || ''}
-                                            onChange={e => {setLocalContent(prev => ({ ...prev, tagline: e.target.value })); setSaveMessage('Changes pending. Click Save All Changes.');}}
+                                            onChange={e => {
+                                                setLocalContent(prev => ({ ...prev, tagline: e.target.value }));
+                                                setSaveMessage('Changes pending. Click Save All Changes.');
+                                            }}
                                             className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                         />
                                         <label className="block mb-2">Header Logo URL</label>
@@ -422,7 +393,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             type="text"
                                             name="header"
                                             value={localContent.logos.header || ''}
-                                            onChange={e => {setLocalContent(prev => ({ ...prev, logos: { ...prev.logos, header: e.target.value } })); setSaveMessage('Changes pending. Click Save All Changes.');}}
+                                            onChange={e => {
+                                                setLocalContent(prev => ({ ...prev, logos: { ...prev.logos, header: e.target.value } }));
+                                                setSaveMessage('Changes pending. Click Save All Changes.');
+                                            }}
                                             className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                         />
                                         <label className="block mb-2">Footer Logo URL</label>
@@ -430,7 +404,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             type="text"
                                             name="footer"
                                             value={localContent.logos.footer || ''}
-                                            onChange={e => {setLocalContent(prev => ({ ...prev, logos: { ...prev.logos, footer: e.target.value } })); setSaveMessage('Changes pending. Click Save All Changes.');}}
+                                            onChange={e => {
+                                                setLocalContent(prev => ({ ...prev, logos: { ...prev.logos, footer: e.target.value } }));
+                                                setSaveMessage('Changes pending. Click Save All Changes.');
+                                            }}
                                             className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                         />
                                     </CollapsibleSection>
@@ -485,44 +462,53 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         )}
 
                                         <h3 className="text-xl font-semibold mb-2 mt-6">Core Values</h3>
-                                        {(localContent.aboutUs.values ?? []).map((value) => ( //
+                                        {(localContent.aboutUs.values ?? []).map((value) => (
                                             <div key={value.id} ref={el => itemRefs.current[value.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
                                                 <input
                                                     type="text"
                                                     value={value.title}
-                                                    onChange={e => setLocalContent(prev => ({ // Direct manipulation
-                                                        ...prev,
-                                                        aboutUs: {
-                                                            ...prev.aboutUs,
-                                                            values: prev.aboutUs.values.map(item => item.id === value.id ? { ...item, title: e.target.value } : item)
-                                                        }
-                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}
+                                                    onChange={e => {
+                                                        setLocalContent(prev => ({
+                                                            ...prev,
+                                                            aboutUs: {
+                                                                ...prev.aboutUs,
+                                                                values: prev.aboutUs.values.map(item => item.id === value.id ? { ...item, title: e.target.value } : item)
+                                                            }
+                                                        }));
+                                                        setSaveMessage('Changes pending. Click Save All Changes.');
+                                                    }}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
                                                 <label className="block mb-1">Description</label>
                                                 <textarea
                                                     value={value.description}
-                                                    onChange={e => setLocalContent(prev => ({ // Direct manipulation
-                                                        ...prev,
-                                                        aboutUs: {
-                                                            ...prev.aboutUs,
-                                                            values: prev.aboutUs.values.map(item => item.id === value.id ? { ...item, description: e.target.value } : item)
-                                                        }
-                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}
+                                                    onChange={e => {
+                                                        setLocalContent(prev => ({
+                                                            ...prev,
+                                                            aboutUs: {
+                                                                ...prev.aboutUs,
+                                                                values: prev.aboutUs.values.map(item => item.id === value.id ? { ...item, description: e.target.value } : item)
+                                                            }
+                                                        }));
+                                                        setSaveMessage('Changes pending. Click Save All Changes.');
+                                                    }}
                                                     rows={2}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
                                                 <label className="block mb-1">Icon</label>
                                                 <select
                                                     value={value.icon}
-                                                    onChange={e => setLocalContent(prev => ({ // Direct manipulation
-                                                        ...prev,
-                                                        aboutUs: {
-                                                            ...prev.aboutUs,
-                                                            values: prev.aboutUs.values.map(item => item.id === value.id ? { ...item, icon: e.target.value as any } : item)
-                                                        }
-                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}
+                                                    onChange={e => {
+                                                        setLocalContent(prev => ({
+                                                            ...prev,
+                                                            aboutUs: {
+                                                                ...prev.aboutUs,
+                                                                values: prev.aboutUs.values.map(item => item.id === value.id ? { ...item, icon: e.target.value as any } : item)
+                                                            }
+                                                        }));
+                                                        setSaveMessage('Changes pending. Click Save All Changes.');
+                                                    }}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 >
                                                     <option value="Lightbulb">Lightbulb</option>
@@ -530,7 +516,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                                     <option value="ShieldCheck">Shield Check</option>
                                                 </select>
                                                 <button
-                                                    onClick={() => { // Directly manipulating nested array here with confirmation
+                                                    onClick={() => {
                                                         if (window.confirm('Are you sure you want to delete this value?')) {
                                                             setLocalContent(prev => ({
                                                                 ...prev,
@@ -549,7 +535,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             </div>
                                         ))}
                                         <button
-                                            onClick={() => { // Directly manipulating nested array here with scroll target
+                                            onClick={() => {
                                                 const newId = generateUniqueId();
                                                 setLocalContent(prev => ({
                                                     ...prev,
@@ -559,7 +545,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                                     }
                                                 }));
                                                 setSaveMessage('Changes pending. Click Save All Changes.');
-                                                setScrollToId(newId); // Set scroll target
+                                                setScrollToId(newId);
                                             }}
                                             className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md mt-4"
                                         >
@@ -573,49 +559,61 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             type="text"
                                             name="title"
                                             value={localContent.whyChooseUs.title || ''}
-                                            onChange={e => {setLocalContent(prev => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, title: e.target.value } })); setSaveMessage('Changes pending. Click Save All Changes.');}}
+                                            onChange={e => {
+                                                setLocalContent(prev => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, title: e.target.value } }));
+                                                setSaveMessage('Changes pending. Click Save All Changes.');
+                                            }}
                                             className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                         />
 
                                         <h3 className="text-xl font-semibold mb-2 mt-6">Features</h3>
-                                        {(localContent.whyChooseUs.features ?? []).map((feature) => ( //
+                                        {(localContent.whyChooseUs.features ?? []).map((feature) => (
                                             <div key={feature.id} ref={el => itemRefs.current[feature.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
                                                 <input
                                                     type="text"
                                                     value={feature.title}
-                                                    onChange={e => {setLocalContent(prev => ({
-                                                        ...prev,
-                                                        whyChooseUs: {
-                                                            ...prev.whyChooseUs,
-                                                            features: prev.whyChooseUs.features.map(item => item.id === feature.id ? { ...item, title: e.target.value } : item)
-                                                        }
-                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}}
+                                                    onChange={e => {
+                                                        setLocalContent(prev => ({
+                                                            ...prev,
+                                                            whyChooseUs: {
+                                                                ...prev.whyChooseUs,
+                                                                features: prev.whyChooseUs.features.map(item => item.id === feature.id ? { ...item, title: e.target.value } : item)
+                                                            }
+                                                        }));
+                                                        setSaveMessage('Changes pending. Click Save All Changes.');
+                                                    }}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
                                                 <label className="block mb-1">Description</label>
                                                 <textarea
                                                     value={feature.description}
-                                                    onChange={e => {setLocalContent(prev => ({
-                                                        ...prev,
-                                                        whyChooseUs: {
-                                                            ...prev.whyChooseUs,
-                                                            features: prev.whyChooseUs.features.map(item => item.id === feature.id ? { ...item, description: e.target.value } : item)
-                                                        }
-                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}}
+                                                    onChange={e => {
+                                                        setLocalContent(prev => ({
+                                                            ...prev,
+                                                            whyChooseUs: {
+                                                                ...prev.whyChooseUs,
+                                                                features: prev.whyChooseUs.features.map(item => item.id === feature.id ? { ...item, description: e.target.value } : item)
+                                                            }
+                                                        }));
+                                                        setSaveMessage('Changes pending. Click Save All Changes.');
+                                                    }}
                                                     rows={2}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
                                                 <label className="block mb-1">Icon</label>
                                                 <select
                                                     value={feature.icon}
-                                                    onChange={e => {setLocalContent(prev => ({
-                                                        ...prev,
-                                                        whyChooseUs: {
-                                                            ...prev.whyChooseUs,
-                                                            features: prev.whyChooseUs.features.map(item => item.id === feature.id ? { ...item, icon: e.target.value as any } : item)
-                                                        }
-                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}}
+                                                    onChange={e => {
+                                                        setLocalContent(prev => ({
+                                                            ...prev,
+                                                            whyChooseUs: {
+                                                                ...prev.whyChooseUs,
+                                                                features: prev.whyChooseUs.features.map(item => item.id === feature.id ? { ...item, icon: e.target.value as any } : item)
+                                                            }
+                                                        }));
+                                                        setSaveMessage('Changes pending. Click Save All Changes.');
+                                                    }}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 >
                                                     <option value="Innovation">Innovation</option>
@@ -652,7 +650,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                                     }
                                                 }));
                                                 setSaveMessage('Changes pending. Click Save All Changes.');
-                                                setScrollToId(newId); // Set scroll target
+                                                setScrollToId(newId);
                                             }}
                                             className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md mt-4"
                                         >
@@ -660,45 +658,54 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         </button>
 
                                         <h3 className="text-xl font-semibold mb-2 mt-6">Statistics</h3>
-                                        {(localContent.whyChooseUs.statistics ?? []).map((stat) => ( //
+                                        {(localContent.whyChooseUs.statistics ?? []).map((stat) => (
                                             <div key={stat.id} ref={el => itemRefs.current[stat.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Label</label>
                                                 <input
                                                     type="text"
                                                     value={stat.label}
-                                                    onChange={e => {setLocalContent(prev => ({
-                                                        ...prev,
-                                                        whyChooseUs: {
-                                                            ...prev.whyChooseUs,
-                                                            statistics: prev.whyChooseUs.statistics.map(item => item.id === stat.id ? { ...item, label: e.target.value } : item)
-                                                        }
-                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}}
+                                                    onChange={e => {
+                                                        setLocalContent(prev => ({
+                                                            ...prev,
+                                                            whyChooseUs: {
+                                                                ...prev.whyChooseUs,
+                                                                statistics: prev.whyChooseUs.statistics.map(item => item.id === stat.id ? { ...item, label: e.target.value } : item)
+                                                            }
+                                                        }));
+                                                        setSaveMessage('Changes pending. Click Save All Changes.');
+                                                    }}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
                                                 <label className="block mb-1">Value</label>
                                                 <input
                                                     type="text"
                                                     value={stat.value}
-                                                    onChange={e => {setLocalContent(prev => ({
-                                                        ...prev,
-                                                        whyChooseUs: {
-                                                            ...prev.whyChooseUs,
-                                                            statistics: prev.whyChooseUs.statistics.map(item => item.id === stat.id ? { ...item, value: e.target.value } : item)
-                                                        }
-                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}}
+                                                    onChange={e => {
+                                                        setLocalContent(prev => ({
+                                                            ...prev,
+                                                            whyChooseUs: {
+                                                                ...prev.whyChooseUs,
+                                                                statistics: prev.whyChooseUs.statistics.map(item => item.id === stat.id ? { ...item, value: e.target.value } : item)
+                                                            }
+                                                        }));
+                                                        setSaveMessage('Changes pending. Click Save All Changes.');
+                                                    }}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
                                                 <label className="block mb-1">Suffix</label>
                                                 <input
                                                     type="text"
                                                     value={stat.suffix}
-                                                    onChange={e => {setLocalContent(prev => ({
-                                                        ...prev,
-                                                        whyChooseUs: {
-                                                            ...prev.whyChooseUs,
-                                                            statistics: prev.whyChooseUs.statistics.map(item => item.id === stat.id ? { ...item, suffix: e.target.value } : item)
-                                                        }
-                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}}
+                                                    onChange={e => {
+                                                        setLocalContent(prev => ({
+                                                            ...prev,
+                                                            whyChooseUs: {
+                                                                ...prev.whyChooseUs,
+                                                                statistics: prev.whyChooseUs.statistics.map(item => item.id === stat.id ? { ...item, suffix: e.target.value } : item)
+                                                            }
+                                                        }));
+                                                        setSaveMessage('Changes pending. Click Save All Changes.');
+                                                    }}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
                                                 <button
@@ -731,7 +738,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                                     }
                                                 }));
                                                 setSaveMessage('Changes pending. Click Save All Changes.');
-                                                setScrollToId(newId); // Set scroll target
+                                                setScrollToId(newId);
                                             }}
                                             className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md mt-4"
                                         >
@@ -744,7 +751,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                             {activeTab === 'content' && (
                                 <>
                                     <CollapsibleSection title="Our Services" defaultOpen={true}>
-                                        {(localContent.services ?? []).map((service) => ( //
+                                        {(localContent.services ?? []).map((service) => (
                                             <div key={service.id} ref={el => itemRefs.current[service.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
                                                 <input
@@ -782,7 +789,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             type="email"
                                             name="contactFormRecipientEmail"
                                             value={localContent.contactFormRecipientEmail || ''}
-                                            onChange={e => {setLocalContent(prev => ({ ...prev, contactFormRecipientEmail: e.target.value })); setSaveMessage('Changes pending. Click Save All Changes.');}}
+                                            onChange={e => {
+                                                setLocalContent(prev => ({ ...prev, contactFormRecipientEmail: e.target.value }));
+                                                setSaveMessage('Changes pending. Click Save All Changes.');
+                                            }}
                                             className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                         />
                                         <label className="block mb-2">Email Address</label>
@@ -820,7 +830,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                     </CollapsibleSection>
 
                                     <CollapsibleSection title="Header Links (Main Menu)" defaultOpen={true}>
-                                        {(localContent.headerLinks ?? []).map((link) => ( //
+                                        {(localContent.headerLinks ?? []).map((link) => (
                                             <div key={link.id} ref={el => itemRefs.current[link.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Text</label>
                                                 <input
@@ -853,7 +863,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                     </CollapsibleSection>
 
                                     <CollapsibleSection title="Social Links" defaultOpen={true}>
-                                        {(localContent.socialLinks ?? []).map((link) => ( //
+                                        {(localContent.socialLinks ?? []).map((link) => (
                                             <div key={link.id} ref={el => itemRefs.current[link.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Name (for icon)</label>
                                                 <select
@@ -861,7 +871,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                                     onChange={e => handleArrayItemChange(e, 'socialLinks', link.id, 'name')}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 >
-                                                    {/* Dynamically render options from SocialIconName type */}
                                                     {['Facebook', 'Twitter', 'Instagram', 'LinkedIn', 'YouTube', 'GitHub', 'Dribbble', 'Behance', 'TikTok', 'Pinterest', 'Discord', 'Vimeo', 'Telegram'].map(iconName => (
                                                         <option key={iconName} value={iconName}>{iconName}</option>
                                                     ))}
@@ -915,7 +924,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                                             onChange={e => handleIconSettingChange(e, key as keyof typeof localContent.floatingButtons)}
                                                             className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                         >
-                                                            {/* Dynamically render options from FloatingIconName type */}
                                                             {['WhatsApp', 'Bot', 'ArrowUp', 'Message', 'Support', 'Chat', 'Question'].map(iconName => (
                                                                 <option key={iconName} value={iconName}>{iconName}</option>
                                                             ))}
@@ -935,7 +943,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                     </CollapsibleSection>
 
                                     <CollapsibleSection title="Legal Pages" defaultOpen={true}>
-                                        {(localContent.legalPages ?? []).map((page) => ( //
+                                        {(localContent.legalPages ?? []).map((page) => (
                                             <div key={page.id} ref={el => itemRefs.current[page.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
                                                 <input
@@ -946,7 +954,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                                 />
                                                 <label className="block mb-1">Last Updated</label>
                                                 <input
-                                                    type="date" // Use date type for date input
+                                                    type="date"
                                                     value={page.lastUpdated}
                                                     onChange={e => handleArrayItemChange(e, 'legalPages', page.id, 'lastUpdated')}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
@@ -1050,7 +1058,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="lightModeTextColor"
                                         value={localThemeSettings.lightModeTextColor || '#555555'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" /> {/* Corrected: Added '/>' */}
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" />
 
                                     <label className="block mb-2">Dynamic Title Color Start</label>
                                     <input
@@ -1058,7 +1066,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="dynamicTitleColorStart"
                                         value={localThemeSettings.dynamicTitleColorStart || '#FF4C60'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" /> {/* Corrected: Removed '}' and added '/>' */}
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" />
 
                                     <label className="block mb-2">Dynamic Title Color End</label>
                                     <input
@@ -1074,7 +1082,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="glowAnimation"
                                         value={localThemeSettings.glowAnimation || 'pulse'}
                                         onChange={handleThemeSettingChange}
-                                        placeholder="e.g., pulse, spin"
+                                        placeholder="'pulse, spin'"
                                         className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                     />
                                     <label className="block mb-2">Glow Color</label>
@@ -1239,7 +1247,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                 {saveMessage}
                             </motion.p>
                         )}
-                        {/* Display global loading/error from context */}
                         {loading && <p className="mt-2 text-center text-yellow-400 text-sm">Loading initial data...</p>}
                         {error && <p className="mt-2 text-center text-red-400 text-sm">Error loading data: {error.message}</p>}
                     </div>
