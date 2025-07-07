@@ -957,7 +957,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="lightModeBgColor"
                                         value={localThemeSettings.lightModeBgColor || '#FFFFFF'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" 
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" />
                                     <label className="block mb-2">Light Mode Heading Color</label>
                                     <input
                                         type="color"
