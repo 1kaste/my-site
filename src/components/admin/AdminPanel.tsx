@@ -1120,7 +1120,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         {localContent.latestProjects.projects.length === 0 ? (
                                             <p className="text-gray-400">No projects added yet.</p>
                                         ) : (
-                                            {(localContent.latestProjects.projects ?? []).map((project) => ( //
+                                            {(localContent.latestProjects.projects ?? []).map((project) => (
                                                 <div key={project.id} className="bg-gray-800 p-4 rounded-lg flex justify-between items-center">
                                                     <div>
                                                         <h4 className="font-semibold text-white">{project.title} ({project.category})</h4>
