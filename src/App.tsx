@@ -27,12 +27,12 @@ const AppContent: React.FC = () => {
     const [route, setRoute] = useState(() => window.location.hash || '#/');
 
     useEffect(() => {
-        const emailJsPublicKey = config.EMAILJS_PUBLIC_KEY;
+        const emailJsPublicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
         // Initialize EmailJS
         if (emailJsPublicKey) {
             emailjs.init({ publicKey: emailJsPublicKey });
         } else {
-            console.warn("EmailJS Public Key is not set in config.ts. Contact form will run in demo mode.");
+            console.warn("EmailJS Public Key (VITE_EMAILJS_PUBLIC_KEY) is not set in environment variables. Contact form will run in demo mode.");
         }
 
         // Apply theme settings as CSS variables
