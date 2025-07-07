@@ -453,7 +453,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         )}
 
                                         <h3 className="text-xl font-semibold mb-2 mt-6">Core Values</h3>
-                                        {localContent.aboutUs.values.map((value, index) => (
+                                        {(localContent.aboutUs.values ?? []).map((value, index) => ( //
                                             <div key={value.id} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
                                                 <input
@@ -522,7 +522,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         />
 
                                         <h3 className="text-xl font-semibold mb-2 mt-6">Features</h3>
-                                        {localContent.whyChooseUs.features.map((feature) => (
+                                        {(localContent.whyChooseUs.features ?? []).map((feature) => ( //
                                             <div key={feature.id} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
                                                 <input
@@ -594,7 +594,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         </button>
 
                                         <h3 className="text-xl font-semibold mb-2 mt-6">Statistics</h3>
-                                        {localContent.whyChooseUs.statistics.map((stat) => (
+                                        {(localContent.whyChooseUs.statistics ?? []).map((stat) => ( //
                                             <div key={stat.id} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Label</label>
                                                 <input
@@ -668,7 +668,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                             {activeTab === 'content' && (
                                 <>
                                     <CollapsibleSection title="Our Services" defaultOpen={true}>
-                                        {localContent.services.map((service) => (
+                                        {(localContent.services ?? []).map((service) => ( //
                                             <div key={service.id} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
                                                 <input
@@ -744,7 +744,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                     </CollapsibleSection>
 
                                     <CollapsibleSection title="Header Links (Main Menu)" defaultOpen={true}>
-                                        {localContent.headerLinks.map((link) => (
+                                        {(localContent.headerLinks ?? []).map((link) => ( //
                                             <div key={link.id} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Text</label>
                                                 <input
@@ -777,7 +777,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                     </CollapsibleSection>
 
                                     <CollapsibleSection title="Social Links" defaultOpen={true}>
-                                        {localContent.socialLinks.map((link) => (
+                                        {(localContent.socialLinks ?? []).map((link) => ( //
                                             <div key={link.id} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Name (for icon)</label>
                                                 <select
@@ -864,7 +864,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                     </CollapsibleSection>
 
                                     <CollapsibleSection title="Legal Pages" defaultOpen={true}>
-                                        {localContent.legalPages.map((page) => (
+                                        {(localContent.legalPages ?? []).map((page) => ( //
                                             <div key={page.id} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
                                                 <input
@@ -1120,7 +1120,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         {localContent.latestProjects.projects.length === 0 ? (
                                             <p className="text-gray-400">No projects added yet.</p>
                                         ) : (
-                                            localContent.latestProjects.projects.map((project) => (
+                                            {(localContent.latestProjects.projects ?? []).map((project) => ( //
                                                 <div key={project.id} className="bg-gray-800 p-4 rounded-lg flex justify-between items-center">
                                                     <div>
                                                         <h4 className="font-semibold text-white">{project.title} ({project.category})</h4>
