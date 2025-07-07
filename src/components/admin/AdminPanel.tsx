@@ -910,7 +910,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                     />
                                     <label className="block mb-2">Primary Color</label>
-                                    //{/* Reduced h-10 to h-8 */}
                                     <input
                                         type="color"
                                         name="primaryColor"
