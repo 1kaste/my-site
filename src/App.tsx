@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import emailjs from '@emailjs/browser';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'; // NEW IMPORTS
 import { ThemeProvider } from './context/ThemeContext';
-import { AuthProvider } from './context/AuthContext';
-import { ContentProvider } from './context/ContentContext';
+// REMOVED: AuthProvider and ContentProvider imports (they are now imported in main.tsx)
 import Layout from './components/core/Layout';
 import AdminLogin from './components/admin/AdminLogin';
 import AdminPanel from './components/admin/AdminPanel';
@@ -17,25 +17,24 @@ import { useTheme } from './hooks/useTheme';
 import { useContent } from './hooks/useContent';
 
 
+// This component now contains all the actual routing logic and page rendering
 const AppContent: React.FC = () => {
     const [isLoginVisible, setLoginVisible] = useState(false);
     const { user } = useAuth();
     const { theme } = useTheme();
     const { themeSettings } = useContent();
     const [isAdminPanelVisible, setAdminPanelVisible] = useState(false);
-    // Initialize route directly from the URL hash. Fallback to '#/' for the homepage.
-    const [route, setRoute] = useState(() => window.location.hash || '#/');
+    const location = useLocation(); // NEW: Hook to get current location from React Router DOM
 
+    // Initialize EmailJS and apply theme settings as CSS variables (KEEP THIS)
     useEffect(() => {
         const emailJsPublicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
-        // Initialize EmailJS
         if (emailJsPublicKey) {
             emailjs.init({ publicKey: emailJsPublicKey });
         } else {
             console.warn("EmailJS Public Key (VITE_EMAILJS_PUBLIC_KEY) is not set in environment variables. Contact form will run in demo mode.");
         }
 
-        // Apply theme settings as CSS variables
         const root = document.documentElement;
         root.style.setProperty('--color-brand-primary', themeSettings.primaryColor);
         root.style.setProperty('--color-brand-secondary', themeSettings.secondaryColor);
@@ -53,55 +52,24 @@ const AppContent: React.FC = () => {
         }
     }, [theme, themeSettings]);
 
-    // This effect only listens for subsequent hash changes after the initial load.
+    // NEW: Scroll to section logic using useLocation for hash changes from React Router
     useEffect(() => {
-        const handleHashChange = () => {
-            // We always want a hash, default to '#/' for the homepage.
-            setRoute(window.location.hash || '#/');
-        };
-
-        window.addEventListener('hashchange', handleHashChange);
-        
-        return () => {
-            window.removeEventListener('hashchange', handleHashChange);
-        };
-    }, []); // Run only once on mount
-
-    // This effect handles all navigation/scrolling behaviors when the route changes.
-    useEffect(() => {
-        if ('scrollRestoration' in window.history) {
-            window.history.scrollRestoration = 'manual';
-        }
-
-        const hash = route;
-        const projectDetailMatch = hash.match(/^#\/project\/(.+)$/);
-        const isLegalPage = hash.startsWith('#/privacy-policy') || hash.startsWith('#/terms-of-service');
-        const isContactPage = hash.startsWith('#/contact');
-        const isProjectsPage = hash.startsWith('#/projects');
-
-        const isHomePageSectionAnchor = !isProjectsPage && !projectDetailMatch && !isLegalPage && !isContactPage && hash.length > 1 && hash !== '#/';
-
-        if (isHomePageSectionAnchor) {
-            // This logic is specifically for scrolling to sections on the homepage.
-            // The `setTimeout` is a safeguard to ensure the HomePage component has had time to render
-            // and the target element is available in the DOM, especially when navigating from a different "page".
-            setTimeout(() => {
-                const id = hash.substring(1);
-                const element = document.getElementById(id);
-                if (element) {
+        if (location.hash) {
+            const id = location.hash.substring(1); // Get ID without '#'
+            const element = document.getElementById(id);
+            if (element) {
+                // Use setTimeout as a safeguard to ensure the element is rendered,
+                // especially when navigating from a different "page" or refreshing directly to a hash.
+                setTimeout(() => {
                     element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                } else {
-                    // Fallback: If after a delay the element still doesn't exist,
-                    // scroll to the top of the current page to prevent a broken state.
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-            }, 100); 
+                }, 100);
+            }
         } else {
-            // For all other cases (e.g., navigating to #/projects, #/contact, or just #),
+            // For all other cases (e.g., navigating to /projects, /contact, or just /),
             // simply scroll to the top of the page.
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
-    }, [route]); // Depend on `route` state
+    }, [location]); // Re-run when location (path or hash) changes
 
 
     const showLogin = () => setLoginVisible(true);
@@ -115,35 +83,22 @@ const AppContent: React.FC = () => {
     };
     const closeAdminPanel = () => setAdminPanelVisible(false);
 
-    const renderPage = () => {
-        const projectDetailMatch = route.match(/^#\/project\/(.+)$/);
-        if (projectDetailMatch) {
-            return <ProjectDetailPage projectId={projectDetailMatch[1]} />;
-        }
-
-        if (route.startsWith('#/projects')) {
-            return <ProjectsPage />;
-        }
-
-        if (route.startsWith('#/privacy-policy')) {
-            return <PrivacyPolicyPage />;
-        }
-
-        if (route.startsWith('#/terms-of-service')) {
-            return <TermsOfServicePage />;
-        }
-
-        if (route.startsWith('#/contact')) {
-            return <ContactPage />;
-        }
-        
-        return <HomePage />;
-    };
+    // REMOVED: renderPage function (it's replaced by <Routes>)
 
     return (
         <>
             <Layout showAdminLogin={showLogin} showAdminPanel={showAdminPanel}>
-                {renderPage()}
+                {/* React Router DOM Routes now define your application's pages */}
+                <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/projects" element={<ProjectsPage />} />
+                    <Route path="/project/:projectId" element={<ProjectDetailPage />} />
+                    <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                    <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+                    <Route path="/contact" element={<ContactPage />} />
+                    {/* Catch-all route for unmatched paths (e.g., a simple 404 or redirect to home) */}
+                    <Route path="*" element={<HomePage />} />
+                </Routes>
             </Layout>
             <AdminLogin 
                 isOpen={isLoginVisible} 
@@ -162,13 +117,14 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
+    // ThemeProvider stays here to provide theme context
     <ThemeProvider>
-        <AuthProvider>
-            <ContentProvider>
-                <AppContent />
-            </ContentProvider>
-        </AuthProvider>
+        {/* BrowserRouter (aliased as Router) wraps AppContent to enable routing */}
+        <Router> 
+            <AppContent />
+        </Router>
     </ThemeProvider>
+    // AuthProvider and ContentProvider are expected to be provided higher up (e.g., in main.tsx)
   );
 };
 
