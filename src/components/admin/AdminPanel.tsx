@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { CloseIcon } from '../ui/icons';
 import {
     Project, ContentState, ThemeSettings, // Keep these
-    WhyChooseUsFeature, Statistic, LegalPage, SocialLink, HeaderLink, Service, IconSetting,
+    WhyChooseUsFeature, Statistic, LegalPage, SocialLink, Link as HeaderLink, Service, IconSetting, // Renamed Link to HeaderLink to avoid conflict
     SocialIconName, FloatingIconName // Assuming these are still needed for dropdowns
 } from '../../types'; // Assuming types.ts has these
 
@@ -64,10 +64,12 @@ const emptyAboutUsValue: { id: string; title: string; description: string; icon:
     icon: 'Lightbulb' // Default icon, ensure it's a valid AboutUsValue icon
 };
 
+// Assuming LegalPage also has an 'id' and 'url' now based on usage in CollapsibleSection
 const emptyLegalPage: LegalPage = {
     id: generateUniqueId(),
     title: '',
-    url: ''
+    lastUpdated: new Date().toISOString().split('T')[0], // Set default to current date
+    content: ''
 };
 
 // Default for a new icon setting (e.g., if you were to add a new floating button type)
@@ -107,11 +109,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
     // Added 'content' tab
     const [activeTab, setActiveTab] = useState<'general' | 'content' | 'theme' | 'projects'>('general');
 
+    // Refs for auto-scrolling
+    const [scrollToId, setScrollToId] = useState<string | null>(null);
+    const itemRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
+
     // Sync fetched data with local state whenever fetched data changes
     useEffect(() => {
         setLocalContent(fetchedContent);
         setLocalThemeSettings(fetchedThemeSettings);
     }, [fetchedContent, fetchedThemeSettings]);
+
+    // Effect for auto-scrolling to newly added items
+    useEffect(() => {
+        if (scrollToId && itemRefs.current[scrollToId]) {
+            itemRefs.current[scrollToId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Optionally, focus the first input field within the new item
+            const firstInput = itemRefs.current[scrollToId]?.querySelector('input, textarea, select') as HTMLElement;
+            if (firstInput) {
+                firstInput.focus();
+            }
+            setScrollToId(null); // Reset after scrolling
+        }
+    }, [scrollToId]); // Only re-run when scrollToId changes
+
 
     // Derived state for project categories (memoized for performance)
     const projectCategories = useMemo(() =>
@@ -142,6 +162,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
             }
             return newContent;
         });
+        setSaveMessage('Changes pending. Click Save All Changes.');
     }, []);
 
     // Handles changes for items within arrays (e.g., services, headerLinks)
@@ -156,22 +177,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                 item.id === id ? { ...item, [field]: value } : item
             )
         }));
+        setSaveMessage('Changes pending. Click Save All Changes.');
     }, []);
 
     // Handles adding a new item to an array
     const handleAddItem = useCallback((arrayKey: keyof ContentState, defaultItem: any) => {
+        const newId = generateUniqueId(); // Generate ID for new item
         setLocalContent(prevContent => ({
             ...prevContent,
-            [arrayKey]: [...(prevContent[arrayKey] as any[]), { ...defaultItem, id: generateUniqueId() }]
+            [arrayKey]: [...(prevContent[arrayKey] as any[]), { ...defaultItem, id: newId }]
         }));
+        setSaveMessage('Changes pending. Click Save All Changes.');
+        setScrollToId(newId); // Set scroll target to the new item's ID
     }, []);
 
-    // Handles removing an item from an array
+    // Handles removing an item from an array with confirmation
     const handleRemoveItem = useCallback((arrayKey: keyof ContentState, id: string) => {
-        setLocalContent(prevContent => ({
-            ...prevContent,
-            [arrayKey]: (prevContent[arrayKey] as any[]).filter(item => item.id !== id)
-        }));
+        if (window.confirm('Are you sure you want to delete this item?')) {
+            setLocalContent(prevContent => ({
+                ...prevContent,
+                [arrayKey]: (prevContent[arrayKey] as any[]).filter(item => item.id !== id)
+            }));
+            setSaveMessage('Changes pending. Click Save All Changes.');
+        }
     }, []);
 
     // Specific handler for IconSetting objects within floatingButtons
@@ -187,6 +215,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                 }
             }
         }));
+        setSaveMessage('Changes pending. Click Save All Changes.');
     }, []);
 
     // --- End Generic Handlers ---
@@ -198,6 +227,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
             ...prevTheme,
             [name]: value,
         }));
+        setSaveMessage('Changes pending. Click Save All Changes.');
     }, []);
 
     // Handler for adding a new project (kept from user's code)
@@ -210,9 +240,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
             return;
         }
 
+        const newProjectId = generateUniqueId(); // Generate unique ID here for scroll target
         const projectToAdd: Project = {
             ...newProject,
-            id: generateUniqueId(), // Ensure unique ID for the new project
+            id: newProjectId, // Ensure unique ID for the new project
             category: finalCategory,
         };
 
@@ -229,12 +260,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
         setNewProject(emptyProject);
         setNewCategoryName('');
         setIsCreatingNewCategory(false);
-        setSaveMessage(null); // Clear save message
+        setSaveMessage('Changes pending. Click Save All Changes.'); // Set save message
+        setScrollToId(newProjectId); // Set scroll target to the new project
     }, [newProject, isCreatingNewCategory, newCategoryName]);
 
     // Handler for deleting a project (kept from user's code)
     const deleteProject = useCallback((id: string) => {
-        if (window.confirm('Are you sure you want to delete this project?')) {
+        if (window.confirm('Are you sure you want to delete this project?')) { // Confirmation added
             setLocalContent(prevContent => ({
                 ...prevContent,
                 latestProjects: {
@@ -242,7 +274,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                     projects: prevContent.latestProjects.projects.filter(p => p.id !== id),
                 },
             }));
-            setSaveMessage(null); // Clear save message
+            setSaveMessage('Changes pending. Click Save All Changes.'); // Set save message after deletion
         }
     }, []);
 
@@ -374,7 +406,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             type="text"
                                             name="siteName"
                                             value={localContent.siteName || ''}
-                                            onChange={e => setLocalContent(prev => ({ ...prev, siteName: e.target.value }))}
+                                            onChange={e => {setLocalContent(prev => ({ ...prev, siteName: e.target.value })); setSaveMessage('Changes pending. Click Save All Changes.');}}
                                             className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                         />
                                         <label className="block mb-2">Tagline</label>
@@ -382,7 +414,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             type="text"
                                             name="tagline"
                                             value={localContent.tagline || ''}
-                                            onChange={e => setLocalContent(prev => ({ ...prev, tagline: e.target.value }))}
+                                            onChange={e => {setLocalContent(prev => ({ ...prev, tagline: e.target.value })); setSaveMessage('Changes pending. Click Save All Changes.');}}
                                             className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                         />
                                         <label className="block mb-2">Header Logo URL</label>
@@ -390,7 +422,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             type="text"
                                             name="header"
                                             value={localContent.logos.header || ''}
-                                            onChange={e => setLocalContent(prev => ({ ...prev, logos: { ...prev.logos, header: e.target.value } }))}
+                                            onChange={e => {setLocalContent(prev => ({ ...prev, logos: { ...prev.logos, header: e.target.value } })); setSaveMessage('Changes pending. Click Save All Changes.');}}
                                             className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                         />
                                         <label className="block mb-2">Footer Logo URL</label>
@@ -398,7 +430,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             type="text"
                                             name="footer"
                                             value={localContent.logos.footer || ''}
-                                            onChange={e => setLocalContent(prev => ({ ...prev, logos: { ...prev.logos, footer: e.target.value } }))}
+                                            onChange={e => {setLocalContent(prev => ({ ...prev, logos: { ...prev.logos, footer: e.target.value } })); setSaveMessage('Changes pending. Click Save All Changes.');}}
                                             className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                         />
                                     </CollapsibleSection>
@@ -453,26 +485,44 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         )}
 
                                         <h3 className="text-xl font-semibold mb-2 mt-6">Core Values</h3>
-                                        {(localContent.aboutUs.values ?? []).map((value, index) => ( //
-                                            <div key={value.id} className="bg-gray-800 p-3 rounded-md mb-3">
+                                        {(localContent.aboutUs.values ?? []).map((value) => ( //
+                                            <div key={value.id} ref={el => itemRefs.current[value.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
                                                 <input
                                                     type="text"
                                                     value={value.title}
-                                                    onChange={e => handleArrayItemChange(e, 'aboutUs', value.id, 'title')} // Needs to be smarter for nested objects
+                                                    onChange={e => setLocalContent(prev => ({ // Direct manipulation
+                                                        ...prev,
+                                                        aboutUs: {
+                                                            ...prev.aboutUs,
+                                                            values: prev.aboutUs.values.map(item => item.id === value.id ? { ...item, title: e.target.value } : item)
+                                                        }
+                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
                                                 <label className="block mb-1">Description</label>
                                                 <textarea
                                                     value={value.description}
-                                                    onChange={e => handleArrayItemChange(e, 'aboutUs', value.id, 'description')} // Needs to be smarter for nested objects
+                                                    onChange={e => setLocalContent(prev => ({ // Direct manipulation
+                                                        ...prev,
+                                                        aboutUs: {
+                                                            ...prev.aboutUs,
+                                                            values: prev.aboutUs.values.map(item => item.id === value.id ? { ...item, description: e.target.value } : item)
+                                                        }
+                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}
                                                     rows={2}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
                                                 <label className="block mb-1">Icon</label>
                                                 <select
                                                     value={value.icon}
-                                                    onChange={e => handleArrayItemChange(e, 'aboutUs', value.id, 'icon')} // Needs to be smarter for nested objects
+                                                    onChange={e => setLocalContent(prev => ({ // Direct manipulation
+                                                        ...prev,
+                                                        aboutUs: {
+                                                            ...prev.aboutUs,
+                                                            values: prev.aboutUs.values.map(item => item.id === value.id ? { ...item, icon: e.target.value as any } : item)
+                                                        }
+                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 >
                                                     <option value="Lightbulb">Lightbulb</option>
@@ -480,14 +530,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                                     <option value="ShieldCheck">Shield Check</option>
                                                 </select>
                                                 <button
-                                                    onClick={() => { // Directly manipulating nested array here
-                                                        setLocalContent(prev => ({
-                                                            ...prev,
-                                                            aboutUs: {
-                                                                ...prev.aboutUs,
-                                                                values: prev.aboutUs.values.filter(item => item.id !== value.id)
-                                                            }
-                                                        }));
+                                                    onClick={() => { // Directly manipulating nested array here with confirmation
+                                                        if (window.confirm('Are you sure you want to delete this value?')) {
+                                                            setLocalContent(prev => ({
+                                                                ...prev,
+                                                                aboutUs: {
+                                                                    ...prev.aboutUs,
+                                                                    values: prev.aboutUs.values.filter(item => item.id !== value.id)
+                                                                }
+                                                            }));
+                                                            setSaveMessage('Changes pending. Click Save All Changes.');
+                                                        }
                                                     }}
                                                     className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-md text-sm"
                                                 >
@@ -496,14 +549,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             </div>
                                         ))}
                                         <button
-                                            onClick={() => { // Directly manipulating nested array here
+                                            onClick={() => { // Directly manipulating nested array here with scroll target
+                                                const newId = generateUniqueId();
                                                 setLocalContent(prev => ({
                                                     ...prev,
                                                     aboutUs: {
                                                         ...prev.aboutUs,
-                                                        values: [...prev.aboutUs.values, emptyAboutUsValue]
+                                                        values: [...prev.aboutUs.values, { ...emptyAboutUsValue, id: newId }]
                                                     }
                                                 }));
+                                                setSaveMessage('Changes pending. Click Save All Changes.');
+                                                setScrollToId(newId); // Set scroll target
                                             }}
                                             className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md mt-4"
                                         >
@@ -517,49 +573,49 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             type="text"
                                             name="title"
                                             value={localContent.whyChooseUs.title || ''}
-                                            onChange={e => setLocalContent(prev => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, title: e.target.value } }))}
+                                            onChange={e => {setLocalContent(prev => ({ ...prev, whyChooseUs: { ...prev.whyChooseUs, title: e.target.value } })); setSaveMessage('Changes pending. Click Save All Changes.');}}
                                             className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                         />
 
                                         <h3 className="text-xl font-semibold mb-2 mt-6">Features</h3>
                                         {(localContent.whyChooseUs.features ?? []).map((feature) => ( //
-                                            <div key={feature.id} className="bg-gray-800 p-3 rounded-md mb-3">
+                                            <div key={feature.id} ref={el => itemRefs.current[feature.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
                                                 <input
                                                     type="text"
                                                     value={feature.title}
-                                                    onChange={e => setLocalContent(prev => ({
+                                                    onChange={e => {setLocalContent(prev => ({
                                                         ...prev,
                                                         whyChooseUs: {
                                                             ...prev.whyChooseUs,
                                                             features: prev.whyChooseUs.features.map(item => item.id === feature.id ? { ...item, title: e.target.value } : item)
                                                         }
-                                                    }))}
+                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
                                                 <label className="block mb-1">Description</label>
                                                 <textarea
                                                     value={feature.description}
-                                                    onChange={e => setLocalContent(prev => ({
+                                                    onChange={e => {setLocalContent(prev => ({
                                                         ...prev,
                                                         whyChooseUs: {
                                                             ...prev.whyChooseUs,
                                                             features: prev.whyChooseUs.features.map(item => item.id === feature.id ? { ...item, description: e.target.value } : item)
                                                         }
-                                                    }))}
+                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}}
                                                     rows={2}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
                                                 <label className="block mb-1">Icon</label>
                                                 <select
                                                     value={feature.icon}
-                                                    onChange={e => setLocalContent(prev => ({
+                                                    onChange={e => {setLocalContent(prev => ({
                                                         ...prev,
                                                         whyChooseUs: {
                                                             ...prev.whyChooseUs,
                                                             features: prev.whyChooseUs.features.map(item => item.id === feature.id ? { ...item, icon: e.target.value as any } : item)
                                                         }
-                                                    }))}
+                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 >
                                                     <option value="Innovation">Innovation</option>
@@ -567,13 +623,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                                     <option value="Partnership">Partnership</option>
                                                 </select>
                                                 <button
-                                                    onClick={() => setLocalContent(prev => ({
-                                                        ...prev,
-                                                        whyChooseUs: {
-                                                            ...prev.whyChooseUs,
-                                                            features: prev.whyChooseUs.features.filter(item => item.id !== feature.id)
+                                                    onClick={() => {
+                                                        if (window.confirm('Are you sure you want to delete this feature?')) {
+                                                            setLocalContent(prev => ({
+                                                                ...prev,
+                                                                whyChooseUs: {
+                                                                    ...prev.whyChooseUs,
+                                                                    features: prev.whyChooseUs.features.filter(item => item.id !== feature.id)
+                                                                }
+                                                            }));
+                                                            setSaveMessage('Changes pending. Click Save All Changes.');
                                                         }
-                                                    }))}
+                                                    }}
                                                     className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-md text-sm"
                                                 >
                                                     Remove Feature
@@ -581,13 +642,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             </div>
                                         ))}
                                         <button
-                                            onClick={() => setLocalContent(prev => ({
-                                                ...prev,
-                                                whyChooseUs: {
-                                                    ...prev.whyChooseUs,
-                                                    features: [...prev.whyChooseUs.features, emptyWhyChooseUsFeature]
-                                                }
-                                            }))}
+                                            onClick={() => {
+                                                const newId = generateUniqueId();
+                                                setLocalContent(prev => ({
+                                                    ...prev,
+                                                    whyChooseUs: {
+                                                        ...prev.whyChooseUs,
+                                                        features: [...prev.whyChooseUs.features, { ...emptyWhyChooseUsFeature, id: newId }]
+                                                    }
+                                                }));
+                                                setSaveMessage('Changes pending. Click Save All Changes.');
+                                                setScrollToId(newId); // Set scroll target
+                                            }}
                                             className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md mt-4"
                                         >
                                             Add New Feature
@@ -595,54 +661,59 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
 
                                         <h3 className="text-xl font-semibold mb-2 mt-6">Statistics</h3>
                                         {(localContent.whyChooseUs.statistics ?? []).map((stat) => ( //
-                                            <div key={stat.id} className="bg-gray-800 p-3 rounded-md mb-3">
+                                            <div key={stat.id} ref={el => itemRefs.current[stat.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Label</label>
                                                 <input
                                                     type="text"
                                                     value={stat.label}
-                                                    onChange={e => setLocalContent(prev => ({
+                                                    onChange={e => {setLocalContent(prev => ({
                                                         ...prev,
                                                         whyChooseUs: {
                                                             ...prev.whyChooseUs,
                                                             statistics: prev.whyChooseUs.statistics.map(item => item.id === stat.id ? { ...item, label: e.target.value } : item)
                                                         }
-                                                    }))}
+                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
                                                 <label className="block mb-1">Value</label>
                                                 <input
                                                     type="text"
                                                     value={stat.value}
-                                                    onChange={e => setLocalContent(prev => ({
+                                                    onChange={e => {setLocalContent(prev => ({
                                                         ...prev,
                                                         whyChooseUs: {
                                                             ...prev.whyChooseUs,
                                                             statistics: prev.whyChooseUs.statistics.map(item => item.id === stat.id ? { ...item, value: e.target.value } : item)
                                                         }
-                                                    }))}
+                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
                                                 <label className="block mb-1">Suffix</label>
                                                 <input
                                                     type="text"
                                                     value={stat.suffix}
-                                                    onChange={e => setLocalContent(prev => ({
+                                                    onChange={e => {setLocalContent(prev => ({
                                                         ...prev,
                                                         whyChooseUs: {
                                                             ...prev.whyChooseUs,
                                                             statistics: prev.whyChooseUs.statistics.map(item => item.id === stat.id ? { ...item, suffix: e.target.value } : item)
                                                         }
-                                                    }))}
+                                                    })); setSaveMessage('Changes pending. Click Save All Changes.');}}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
                                                 <button
-                                                    onClick={() => setLocalContent(prev => ({
-                                                        ...prev,
-                                                        whyChooseUs: {
-                                                            ...prev.whyChooseUs,
-                                                            statistics: prev.whyChooseUs.statistics.filter(item => item.id !== stat.id)
+                                                    onClick={() => {
+                                                        if (window.confirm('Are you sure you want to delete this statistic?')) {
+                                                            setLocalContent(prev => ({
+                                                                ...prev,
+                                                                whyChooseUs: {
+                                                                    ...prev.whyChooseUs,
+                                                                    statistics: prev.whyChooseUs.statistics.filter(item => item.id !== stat.id)
+                                                                }
+                                                            }));
+                                                            setSaveMessage('Changes pending. Click Save All Changes.');
                                                         }
-                                                    }))}
+                                                    }}
                                                     className="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-md text-sm"
                                                 >
                                                     Remove Statistic
@@ -650,13 +721,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             </div>
                                         ))}
                                         <button
-                                            onClick={() => setLocalContent(prev => ({
-                                                ...prev,
-                                                whyChooseUs: {
-                                                    ...prev.whyChooseUs,
-                                                    statistics: [...prev.whyChooseUs.statistics, emptyStatistic]
-                                                }
-                                            }))}
+                                            onClick={() => {
+                                                const newId = generateUniqueId();
+                                                setLocalContent(prev => ({
+                                                    ...prev,
+                                                    whyChooseUs: {
+                                                        ...prev.whyChooseUs,
+                                                        statistics: [...prev.whyChooseUs.statistics, { ...emptyStatistic, id: newId }]
+                                                    }
+                                                }));
+                                                setSaveMessage('Changes pending. Click Save All Changes.');
+                                                setScrollToId(newId); // Set scroll target
+                                            }}
                                             className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md mt-4"
                                         >
                                             Add New Statistic
@@ -669,7 +745,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                 <>
                                     <CollapsibleSection title="Our Services" defaultOpen={true}>
                                         {(localContent.services ?? []).map((service) => ( //
-                                            <div key={service.id} className="bg-gray-800 p-3 rounded-md mb-3">
+                                            <div key={service.id} ref={el => itemRefs.current[service.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
                                                 <input
                                                     type="text"
@@ -706,7 +782,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             type="email"
                                             name="contactFormRecipientEmail"
                                             value={localContent.contactFormRecipientEmail || ''}
-                                            onChange={e => setLocalContent(prev => ({ ...prev, contactFormRecipientEmail: e.target.value }))}
+                                            onChange={e => {setLocalContent(prev => ({ ...prev, contactFormRecipientEmail: e.target.value })); setSaveMessage('Changes pending. Click Save All Changes.');}}
                                             className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                         />
                                         <label className="block mb-2">Email Address</label>
@@ -745,7 +821,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
 
                                     <CollapsibleSection title="Header Links (Main Menu)" defaultOpen={true}>
                                         {(localContent.headerLinks ?? []).map((link) => ( //
-                                            <div key={link.id} className="bg-gray-800 p-3 rounded-md mb-3">
+                                            <div key={link.id} ref={el => itemRefs.current[link.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Text</label>
                                                 <input
                                                     type="text"
@@ -778,21 +854,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
 
                                     <CollapsibleSection title="Social Links" defaultOpen={true}>
                                         {(localContent.socialLinks ?? []).map((link) => ( //
-                                            <div key={link.id} className="bg-gray-800 p-3 rounded-md mb-3">
+                                            <div key={link.id} ref={el => itemRefs.current[link.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Name (for icon)</label>
                                                 <select
                                                     value={link.name}
                                                     onChange={e => handleArrayItemChange(e, 'socialLinks', link.id, 'name')}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 >
-                                                    {/* Assuming SocialIconName from types.ts provides these options */}
-                                                    <option value="Facebook">Facebook</option>
-                                                    <option value="Twitter">Twitter</option>
-                                                    <option value="Instagram">Instagram</option>
-                                                    <option value="LinkedIn">LinkedIn</option>
-                                                    <option value="YouTube">YouTube</option>
-                                                    <option value="GitHub">GitHub</option>
-                                                    {/* Add more social icon names as needed based on your SocialIconName type */}
+                                                    {/* Dynamically render options from SocialIconName type */}
+                                                    {['Facebook', 'Twitter', 'Instagram', 'LinkedIn', 'YouTube', 'GitHub', 'Dribbble', 'Behance', 'TikTok', 'Pinterest', 'Discord', 'Vimeo', 'Telegram'].map(iconName => (
+                                                        <option key={iconName} value={iconName}>{iconName}</option>
+                                                    ))}
                                                 </select>
                                                 <label className="block mb-1">URL</label>
                                                 <input
@@ -843,11 +915,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                                             onChange={e => handleIconSettingChange(e, key as keyof typeof localContent.floatingButtons)}
                                                             className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                         >
-                                                            {/* Assuming FloatingIconName from types.ts provides these options */}
-                                                            <option value="WhatsApp">WhatsApp</option>
-                                                            <option value="AiAssistant">AI Assistant</option>
-                                                            <option value="ScrollToTop">Scroll To Top</option>
-                                                            {/* Add more pre-built floating icon names as needed based on your FloatingIconName type */}
+                                                            {/* Dynamically render options from FloatingIconName type */}
+                                                            {['WhatsApp', 'Bot', 'ArrowUp', 'Message', 'Support', 'Chat', 'Question'].map(iconName => (
+                                                                <option key={iconName} value={iconName}>{iconName}</option>
+                                                            ))}
                                                         </select>
                                                     ) : (
                                                         <input
@@ -865,7 +936,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
 
                                     <CollapsibleSection title="Legal Pages" defaultOpen={true}>
                                         {(localContent.legalPages ?? []).map((page) => ( //
-                                            <div key={page.id} className="bg-gray-800 p-3 rounded-md mb-3">
+                                            <div key={page.id} ref={el => itemRefs.current[page.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
                                                 <input
                                                     type="text"
@@ -873,11 +944,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                                     onChange={e => handleArrayItemChange(e, 'legalPages', page.id, 'title')}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
-                                                <label className="block mb-1">URL</label>
+                                                <label className="block mb-1">Last Updated</label>
                                                 <input
-                                                    type="text"
-                                                    value={page.url}
-                                                    onChange={e => handleArrayItemChange(e, 'legalPages', page.id, 'url')}
+                                                    type="date" // Use date type for date input
+                                                    value={page.lastUpdated}
+                                                    onChange={e => handleArrayItemChange(e, 'legalPages', page.id, 'lastUpdated')}
+                                                    className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
+                                                />
+                                                <label className="block mb-1">Content</label>
+                                                <textarea
+                                                    value={page.content}
+                                                    onChange={e => handleArrayItemChange(e, 'legalPages', page.id, 'content')}
+                                                    rows={5}
                                                     className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white mb-2"
                                                 />
                                                 <button
@@ -916,7 +994,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         value={localThemeSettings.primaryColor || '#FF4C60'}
                                         onChange={handleThemeSettingChange}
                                         className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                                        
+
                                     />
                                     <label className="block mb-2">Secondary Color</label>
                                     <input
@@ -924,7 +1002,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="secondaryColor"
                                         value={localThemeSettings.secondaryColor || '#17D161'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" 
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                     />
 
                                     <label className="block mb-2">Dark Mode Background Color</label>
@@ -933,7 +1011,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="darkModeBgColor"
                                         value={localThemeSettings.darkModeBgColor || '#1A1A1A'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" 
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                     />
                                     <label className="block mb-2">Dark Mode Heading Color</label>
                                     <input
@@ -941,7 +1019,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="darkModeHeadingColor"
                                         value={localThemeSettings.darkModeHeadingColor || '#FFFFFF'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" 
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                     />
                                     <label className="block mb-2">Dark Mode Text Color</label>
                                     <input
@@ -949,7 +1027,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="darkModeTextColor"
                                         value={localThemeSettings.darkModeTextColor || '#F0F0F0'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" 
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                     />
                                     <label className="block mb-2">Light Mode Background Color</label>
                                     <input
@@ -964,49 +1042,49 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="lightModeHeadingColor"
                                         value={localThemeSettings.lightModeHeadingColor || '#333333'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" 
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
                                     />
                                     <label className="block mb-2">Light Mode Text Color</label>
-<input
-    type="color"
-    name="lightModeTextColor"
-    value={localThemeSettings.lightModeTextColor || '#555555'}
-    onChange={handleThemeSettingChange}
-    className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" /> {/* Corrected: Added '/>' */}
+                                    <input
+                                        type="color"
+                                        name="lightModeTextColor"
+                                        value={localThemeSettings.lightModeTextColor || '#555555'}
+                                        onChange={handleThemeSettingChange}
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" /> {/* Corrected: Added '/>' */}
 
-<label className="block mb-2">Dynamic Title Color Start</label>
-<input
-    type="color"
-    name="dynamicTitleColorStart"
-    value={localThemeSettings.dynamicTitleColorStart || '#FF4C60'}
-    onChange={handleThemeSettingChange}
-    className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" /> {/* Corrected: Removed '}' and added '/>' */}
+                                    <label className="block mb-2">Dynamic Title Color Start</label>
+                                    <input
+                                        type="color"
+                                        name="dynamicTitleColorStart"
+                                        value={localThemeSettings.dynamicTitleColorStart || '#FF4C60'}
+                                        onChange={handleThemeSettingChange}
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" /> {/* Corrected: Removed '}' and added '/>' */}
 
-<label className="block mb-2">Dynamic Title Color End</label>
-<input
-    type="color"
-    name="dynamicTitleColorEnd"
-    value={localThemeSettings.dynamicTitleColorEnd || '#17D161'}
-    onChange={handleThemeSettingChange}
-    className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" />
+                                    <label className="block mb-2">Dynamic Title Color End</label>
+                                    <input
+                                        type="color"
+                                        name="dynamicTitleColorEnd"
+                                        value={localThemeSettings.dynamicTitleColorEnd || '#17D161'}
+                                        onChange={handleThemeSettingChange}
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" />
 
-<label className="block mb-2">Glow Animation (CSS string)</label>
-<input
-    type="text"
-    name="glowAnimation"
-    value={localThemeSettings.glowAnimation || 'pulse'}
-    onChange={handleThemeSettingChange}
-    placeholder="e.g., pulse, spin"
-    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-/>
-<label className="block mb-2">Glow Color</label>
-<input
-    type="color"
-    name="glowColor"
-    value={localThemeSettings.glowColor || '#FF4C60'}
-    onChange={handleThemeSettingChange}
-    className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" />
-</CollapsibleSection>
+                                    <label className="block mb-2">Glow Animation (CSS string)</label>
+                                    <input
+                                        type="text"
+                                        name="glowAnimation"
+                                        value={localThemeSettings.glowAnimation || 'pulse'}
+                                        onChange={handleThemeSettingChange}
+                                        placeholder="e.g., pulse, spin"
+                                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+                                    />
+                                    <label className="block mb-2">Glow Color</label>
+                                    <input
+                                        type="color"
+                                        name="glowColor"
+                                        value={localThemeSettings.glowColor || '#FF4C60'}
+                                        onChange={handleThemeSettingChange}
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" />
+                                </CollapsibleSection>
                             )}
 
                             {activeTab === 'projects' && (
@@ -1121,7 +1199,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             <p className="text-gray-400">No projects added yet.</p>
                                         ) : (
                                             (localContent.latestProjects.projects ?? []).map((project) => (
-                                                <div key={project.id} className="bg-gray-800 p-4 rounded-lg flex justify-between items-center">
+                                                <div key={project.id} ref={el => itemRefs.current[project.id] = el} className="bg-gray-800 p-4 rounded-lg flex justify-between items-center">
                                                     <div>
                                                         <h4 className="font-semibold text-white">{project.title} ({project.category})</h4>
                                                         <p className="text-gray-400 text-sm">{project.description}</p>
