@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, ReactNode, useCallback } fro
 import { getDatabase, ref, onValue, set } from 'firebase/database';
 import app from '../firebase/firebaseConfig'; // Default import for 'app'
 import { ContentState, ThemeSettings, initialContentState, initialThemeSettings, Project } from '../types';
+import { useAuth } from '../hooks/useAuth'; // <-- NEW: Import useAuth hook
 
 // Define the shape of your context data, including the new saveContentToDb function
 interface ContentContextType {
@@ -24,7 +25,10 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
     const [contentRef, setContentRef] = useState<any>(null);
     const [themeRef, setThemeRef] = useState<any>(null);
 
-    // Initialize Firebase Realtime Database
+    // NEW: Get user and authentication loading status from useAuth
+    const { user, loading: authLoading } = useAuth();
+
+    // Initialize Firebase Realtime Database references
     useEffect(() => {
         if (app) {
             const dbInstance = getDatabase(app);
@@ -32,14 +36,24 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
             setContentRef(ref(dbInstance, 'websiteData/content'));
             setThemeRef(ref(dbInstance, 'websiteData/themeSettings'));
         }
-    }, []); // Removed app from dependency array as it's a static import
+    }, []); // app is a static import, so no need for it in dependencies
 
     // Effect to listen for real-time updates from Firebase
     useEffect(() => {
-        if (!contentRef || !themeRef) return; // Wait for refs to be initialized
+        // Only attach listeners if refs are initialized AND if there is an authenticated user (user is not null)
+        // If authLoading is true, it means we are still determining auth status, so wait.
+        if (!contentRef || !themeRef || !user || authLoading) {
+            // If auth is loaded and no user, and we're trying to fetch protected data,
+            // set an error indicating authentication is needed.
+            if (!user && !authLoading) {
+                setError(new Error("Authentication required to load protected content."));
+                setLoading(false); // Stop loading if authentication is missing
+            }
+            return; // Do not proceed with fetching if conditions are not met
+        }
 
         setLoading(true);
-        setError(null); // Clear error on new fetch attempt
+        setError(null); // Clear previous errors on new fetch attempt
 
         let contentLoaded = false;
         let themeLoaded = false;
@@ -54,13 +68,12 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
         const unsubscribeContent = onValue(contentRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                // Safely convert projects object to array if it exists and is an object
                 const projectsData = data.latestProjects?.projects;
                 const projectsArray = projectsData
                     ? (Array.isArray(projectsData)
-                        ? projectsData // Already an array
-                        : Object.values(projectsData) as Project[]) // Convert object to array
-                    : []; // Default to empty array if no projects data or it's empty
+                        ? projectsData
+                        : Object.values(projectsData) as Project[])
+                    : [];
 
                 setContent(prevContent => ({
                     ...initialContentState,
@@ -73,15 +86,13 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
             } else {
                 console.log("No content data found in Firebase, initializing with default client-side.");
                 setContent(initialContentState);
-                // Removed the problematic set(contentRef, initialContentState) here
-                // Initial data should be written once, not on every onValue callback if not found.
             }
             contentLoaded = true;
             checkAllLoaded();
         }, (dbError) => {
             console.error("Firebase content fetch error:", dbError);
             setError(new Error(dbError.message));
-            setLoading(false); // Set loading false if error occurs
+            setLoading(false);
         });
 
         // Listener for theme settings
@@ -92,34 +103,29 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
             } else {
                 console.log("No theme settings found in Firebase, initializing with default client-side.");
                 setThemeSettings(initialThemeSettings);
-                // Removed the problematic set(themeRef, initialThemeSettings) here
             }
             themeLoaded = true;
             checkAllLoaded();
         }, (dbError) => {
             console.error("Firebase theme fetch error:", dbError);
             setError(new Error(dbError.message));
-            setLoading(false); // Set loading false if error occurs
+            setLoading(false);
         });
 
-        // Cleanup function to detach listeners when the component unmounts
+        // Cleanup function to detach listeners when the component unmounts or dependencies change
         return () => {
             unsubscribeContent();
             unsubscribeTheme();
         };
-    }, [contentRef, themeRef]); // Depend on refs to re-run effect when they are set
+    }, [contentRef, themeRef, user, authLoading]); // <-- IMPORTANT: Add 'user' and 'authLoading' to dependencies
 
     // Function to save content and theme settings to Firebase Realtime Database
-    // Using useCallback to memoize the function, good for performance
     const saveContentToDb = useCallback(async (newContent: ContentState, newTheme: ThemeSettings) => {
-        if (!contentRef || !themeRef) { // Check both refs before attempting to save
-            console.error("Firebase Realtime Database references not initialized.");
-            throw new Error("Database references not initialized.");
+        if (!contentRef || !themeRef || !user) { // Ensure refs and user are available before saving
+            console.error("Cannot save: Database references not initialized or user not authenticated.");
+            throw new Error("Cannot save: User not authenticated or database not ready.");
         }
         try {
-            // When saving, if newContent.latestProjects.projects is an array,
-            // Firebase will automatically convert it to an object with integer keys.
-            // This is generally acceptable when using `set` on the parent node.
             await Promise.all([
                 set(contentRef, newContent),
                 set(themeRef, newTheme)
@@ -129,7 +135,7 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
             console.error("Error saving data to Firebase:", saveError);
             throw saveError;
         }
-    }, [contentRef, themeRef]); // Depend on refs
+    }, [contentRef, themeRef, user]); // Add 'user' to dependencies for save function too
 
     const contextValue = {
         content,
