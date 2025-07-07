@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
-import { AuthProvider } from './hooks/useAuth'; // Make sure this path is correct
+import { AuthProvider } from './context/AuthContext'; // Make sure this path is correct
 import { ContentProvider } from './context/ContentContext'; // Make sure this path is correct
 
 const rootElement = document.getElementById('root');
