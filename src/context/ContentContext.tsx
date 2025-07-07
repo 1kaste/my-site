@@ -1,7 +1,7 @@
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { getDatabase, ref, onValue, set } from 'firebase/database';
 import app from '../firebase/firebaseConfig'; // Default import for 'app'
-import { ContentState, ThemeSettings, initialContentState, initialThemeSettings } from '../types';
+import { ContentState, ThemeSettings, initialContentState, initialThemeSettings, Project } from '../types';
 
 // Define the shape of your context data, including the new saveContentToDb function
 interface ContentContextType {
@@ -19,11 +19,10 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
     const [content, setContent] = useState<ContentState>(initialContentState);
     const [themeSettings, setThemeSettings] = useState<ThemeSettings>(initialThemeSettings);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null); // <--- CORRECTED THIS LINE
+    const [error, setError] = useState<Error | null>(null);
     const [database, setDatabase] = useState<any>(null);
     const [contentRef, setContentRef] = useState<any>(null);
     const [themeRef, setThemeRef] = useState<any>(null);
-
 
     // Initialize Firebase Realtime Database
     useEffect(() => {
@@ -33,7 +32,7 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
             setContentRef(ref(dbInstance, 'websiteData/content'));
             setThemeRef(ref(dbInstance, 'websiteData/themeSettings'));
         }
-    }, [app]); // Depend on 'app' to ensure it's initialized
+    }, []); // Removed app from dependency array as it's a static import
 
     // Effect to listen for real-time updates from Firebase
     useEffect(() => {
@@ -42,17 +41,43 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
         setLoading(true);
         setError(null); // Clear error on new fetch attempt
 
+        let contentLoaded = false;
+        let themeLoaded = false;
+
+        const checkAllLoaded = () => {
+            if (contentLoaded && themeLoaded) {
+                setLoading(false);
+            }
+        };
+
         // Listener for content data
         const unsubscribeContent = onValue(contentRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                setContent(prevContent => ({ ...initialContentState, ...data }));
+                // Safely convert projects object to array if it exists and is an object
+                const projectsData = data.latestProjects?.projects;
+                const projectsArray = projectsData
+                    ? (Array.isArray(projectsData)
+                        ? projectsData // Already an array
+                        : Object.values(projectsData) as Project[]) // Convert object to array
+                    : []; // Default to empty array if no projects data or it's empty
+
+                setContent(prevContent => ({
+                    ...initialContentState,
+                    ...data,
+                    latestProjects: {
+                        ...data.latestProjects,
+                        projects: projectsArray
+                    }
+                }));
             } else {
-                console.log("No content data found in Firebase, initializing with default.");
+                console.log("No content data found in Firebase, initializing with default client-side.");
                 setContent(initialContentState);
-                set(contentRef, initialContentState).catch(e => console.error("Failed to set initial content:", e));
+                // Removed the problematic set(contentRef, initialContentState) here
+                // Initial data should be written once, not on every onValue callback if not found.
             }
-            // Do not set loading to false here, wait for both listeners or a combined flag
+            contentLoaded = true;
+            checkAllLoaded();
         }, (dbError) => {
             console.error("Firebase content fetch error:", dbError);
             setError(new Error(dbError.message));
@@ -65,11 +90,12 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
             if (data) {
                 setThemeSettings(prevTheme => ({ ...initialThemeSettings, ...data }));
             } else {
-                console.log("No theme settings found in Firebase, initializing with default.");
+                console.log("No theme settings found in Firebase, initializing with default client-side.");
                 setThemeSettings(initialThemeSettings);
-                set(themeRef, initialThemeSettings).catch(e => console.error("Failed to set initial theme settings:", e));
+                // Removed the problematic set(themeRef, initialThemeSettings) here
             }
-            setLoading(false); // Set loading to false once theme is fetched (assuming content is also done or will be)
+            themeLoaded = true;
+            checkAllLoaded();
         }, (dbError) => {
             console.error("Firebase theme fetch error:", dbError);
             setError(new Error(dbError.message));
@@ -84,12 +110,16 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
     }, [contentRef, themeRef]); // Depend on refs to re-run effect when they are set
 
     // Function to save content and theme settings to Firebase Realtime Database
-    const saveContentToDb = async (newContent: ContentState, newTheme: ThemeSettings) => {
+    // Using useCallback to memoize the function, good for performance
+    const saveContentToDb = useCallback(async (newContent: ContentState, newTheme: ThemeSettings) => {
         if (!contentRef || !themeRef) { // Check both refs before attempting to save
             console.error("Firebase Realtime Database references not initialized.");
             throw new Error("Database references not initialized.");
         }
         try {
+            // When saving, if newContent.latestProjects.projects is an array,
+            // Firebase will automatically convert it to an object with integer keys.
+            // This is generally acceptable when using `set` on the parent node.
             await Promise.all([
                 set(contentRef, newContent),
                 set(themeRef, newTheme)
@@ -99,7 +129,7 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
             console.error("Error saving data to Firebase:", saveError);
             throw saveError;
         }
-    };
+    }, [contentRef, themeRef]); // Depend on refs
 
     const contextValue = {
         content,
