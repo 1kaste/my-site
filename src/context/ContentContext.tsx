@@ -1,10 +1,9 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { getDatabase, ref, onValue, set } from 'firebase/database';
-import app from '../firebase/firebaseConfig'; // Default import for 'app'
+import app from '../firebase/firebaseConfig';
 import { ContentState, ThemeSettings, initialContentState, initialThemeSettings, Project } from '../types';
-import { useAuth } from '../hooks/useAuth'; // <-- NEW: Import useAuth hook
+import { useAuth } from '../hooks/useAuth'; // We still need this for save functionality and admin panel state
 
-// Define the shape of your context data, including the new saveContentToDb function
 interface ContentContextType {
     content: ContentState;
     themeSettings: ThemeSettings;
@@ -13,7 +12,6 @@ interface ContentContextType {
     saveContentToDb: (newContent: ContentState, newTheme: ThemeSettings) => Promise<void>;
 }
 
-// Create the context with a default undefined value
 export const ContentContext = createContext<ContentContextType | undefined>(undefined);
 
 export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -25,8 +23,7 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
     const [contentRef, setContentRef] = useState<any>(null);
     const [themeRef, setThemeRef] = useState<any>(null);
 
-    // NEW: Get user and authentication loading status from useAuth
-    const { user, loading: authLoading } = useAuth();
+    const { user, loading: authLoading } = useAuth(); // Still get user for write permissions in saveContentToDb
 
     // Initialize Firebase Realtime Database references
     useEffect(() => {
@@ -36,21 +33,23 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
             setContentRef(ref(dbInstance, 'websiteData/content'));
             setThemeRef(ref(dbInstance, 'websiteData/themeSettings'));
         }
-    }, []); // app is a static import, so no need for it in dependencies
+    }, []);
 
     // Effect to listen for real-time updates from Firebase
     useEffect(() => {
-        // Only attach listeners if refs are initialized AND if there is an authenticated user (user is not null)
-        // If authLoading is true, it means we are still determining auth status, so wait.
-        if (!contentRef || !themeRef || !user || authLoading) {
-            // If auth is loaded and no user, and we're trying to fetch protected data,
-            // set an error indicating authentication is needed.
-            if (!user && !authLoading) {
-                setError(new Error("Authentication required to load protected content."));
-                setLoading(false); // Stop loading if authentication is missing
+        // --- KEY CHANGE HERE ---
+        // Only proceed if refs are initialized and auth is not still loading.
+        // We removed the `!user` check because content and themeSettings are now publicly readable.
+        if (!contentRef || !themeRef || authLoading) {
+            // If auth is done loading and user is null, it just means they're not logged in,
+            // which is fine for public reads.
+            if (!authLoading && !user) {
+                // We're ready to load public content. No specific error here for non-login.
             }
-            return; // Do not proceed with fetching if conditions are not met
+            // If we're still waiting for refs or authLoading, return.
+            return;
         }
+        // --- END KEY CHANGE ---
 
         setLoading(true);
         setError(null); // Clear previous errors on new fetch attempt
@@ -117,13 +116,14 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
             unsubscribeContent();
             unsubscribeTheme();
         };
-    }, [contentRef, themeRef, user, authLoading]); // <-- IMPORTANT: Add 'user' and 'authLoading' to dependencies
+    }, [contentRef, themeRef, authLoading]); // --- KEY CHANGE: Removed 'user' from dependencies ---
 
     // Function to save content and theme settings to Firebase Realtime Database
     const saveContentToDb = useCallback(async (newContent: ContentState, newTheme: ThemeSettings) => {
-        if (!contentRef || !themeRef || !user) { // Ensure refs and user are available before saving
+        // Saving still requires an authenticated user (admin)
+        if (!contentRef || !themeRef || !user) {
             console.error("Cannot save: Database references not initialized or user not authenticated.");
-            throw new Error("Cannot save: User not authenticated or database not ready.");
+            throw new Error("Cannot save: User not authenticated.");
         }
         try {
             await Promise.all([
@@ -135,7 +135,7 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
             console.error("Error saving data to Firebase:", saveError);
             throw saveError;
         }
-    }, [contentRef, themeRef, user]); // Add 'user' to dependencies for save function too
+    }, [contentRef, themeRef, user]); // 'user' remains a dependency for saving
 
     const contextValue = {
         content,
