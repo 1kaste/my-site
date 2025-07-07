@@ -967,46 +967,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" 
                                     />
                                     <label className="block mb-2">Light Mode Text Color</label>
-                                    <input
-                                        type="color"
-                                        name="lightModeTextColor"
-                                        value={localThemeSettings.lightModeTextColor || '#555555'}
-                                        onChange={handleThemeSettingChange}
-                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" 
-                                    <label className="block mb-2">Dynamic Title Color Start</label>
-                                    <input
-                                        type="color"
-                                        name="dynamicTitleColorStart"
-                                        value={localThemeSettings.dynamicTitleColorStart || '#FF4C60'}
-                                        onChange={handleThemeSettingChange}
-                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" }
-                                    />
-                                    <label className="block mb-2">Dynamic Title Color End</label>
-                                    <input
-                                        type="color"
-                                        name="dynamicTitleColorEnd"
-                                        value={localThemeSettings.dynamicTitleColorEnd || '#17D161'}
-                                        onChange={handleThemeSettingChange}
-                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" 
-                                    />
-                                    <label className="block mb-2">Glow Animation (CSS string)</label>
-                                    <input
-                                        type="text"
-                                        name="glowAnimation"
-                                        value={localThemeSettings.glowAnimation || 'pulse'}
-                                        onChange={handleThemeSettingChange}
-                                        placeholder="e.g., pulse, spin"
-                                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
-                                    />
-                                    <label className="block mb-2">Glow Color</label>
-                                    <input
-                                        type="color"
-                                        name="glowColor"
-                                        value={localThemeSettings.glowColor || '#FF4C60'}
-                                        onChange={handleThemeSettingChange}
-                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" 
-                                    />
-                                </CollapsibleSection>
+<input
+    type="color"
+    name="lightModeTextColor"
+    value={localThemeSettings.lightModeTextColor || '#555555'}
+    onChange={handleThemeSettingChange}
+    className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" /> {/* Corrected: Added '/>' */}
+
+<label className="block mb-2">Dynamic Title Color Start</label>
+<input
+    type="color"
+    name="dynamicTitleColorStart"
+    value={localThemeSettings.dynamicTitleColorStart || '#FF4C60'}
+    onChange={handleThemeSettingChange}
+    className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" /> {/* Corrected: Removed '}' and added '/>' */}
+
+<label className="block mb-2">Dynamic Title Color End</label>
+<input
+    type="color"
+    name="dynamicTitleColorEnd"
+    value={localThemeSettings.dynamicTitleColorEnd || '#17D161'}
+    onChange={handleThemeSettingChange}
+    className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" />
+
+<label className="block mb-2">Glow Animation (CSS string)</label>
+<input
+    type="text"
+    name="glowAnimation"
+    value={localThemeSettings.glowAnimation || 'pulse'}
+    onChange={handleThemeSettingChange}
+    placeholder="e.g., pulse, spin"
+    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white mb-4"
+/>
+<label className="block mb-2">Glow Color</label>
+<input
+    type="color"
+    name="glowColor"
+    value={localThemeSettings.glowColor || '#FF4C60'}
+    onChange={handleThemeSettingChange}
+    className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" />
+</CollapsibleSection>
                             )}
 
                             {activeTab === 'projects' && (
