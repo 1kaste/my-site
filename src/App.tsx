@@ -15,7 +15,7 @@ import TermsOfServicePage from './pages/TermsOfServicePage';
 import ContactPage from './pages/ContactPage';
 import { useTheme } from './hooks/useTheme';
 import { useContent } from './hooks/useContent';
-import { config } from '../config';
+
 
 const AppContent: React.FC = () => {
     const [isLoginVisible, setLoginVisible] = useState(false);
