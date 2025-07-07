@@ -19,8 +19,7 @@ export interface Link {
     url: string;
 }
 
-export type SocialIconName = 'Twitter' | 'GitHub' | 'LinkedIn' | 'Facebook' | 'Instagram' | 'YouTube' | 'Dribbble' | 'Behance' | 'TikTok' | 'Pinterest' | 'Discord' | 'Vimeo' | 'Telegram';
-
+export type SocialIconName = 'Twitter' | 'GitHub' | 'LinkedIn' | 'Facebook' | 'Instagram' | 'YouTube' | 'Dribbble' | 'Behance' | 'TikTok' | 'Pinterest' | 'Discord' | 'Vimeo' | 'Telegram'; // Added 'TikTok'
 export type FloatingIconName = 'WhatsApp' | 'Bot' | 'ArrowUp' | 'Message' | 'Support' | 'Chat' | 'Question';
 
 export type IconSourceType = 'pre-built' | 'url';
