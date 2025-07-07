@@ -380,7 +380,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                         <div>
                             {activeTab === 'general' && (
                                 <>
-                                    <CollapsibleSection title="General Site Content"> {/* defaultOpen removed */}
+                                    <CollapsibleSection title="General Site Content">
                                         <label className="block mb-2">Site Name</label>
                                         <input
                                             type="text"
@@ -427,7 +427,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         />
                                     </CollapsibleSection>
 
-                                    <CollapsibleSection title="About Us Section"> {/* defaultOpen removed */}
+                                    <CollapsibleSection title="About Us Section">
                                         <label className="block mb-2">Introduction Text</label>
                                         <textarea
                                             name="introduction"
@@ -568,7 +568,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         </button>
                                     </CollapsibleSection>
 
-                                    <CollapsibleSection title="Why Choose Us Section"> {/* defaultOpen removed */}
+                                    <CollapsibleSection title="Why Choose Us Section">
                                         <label className="block mb-2">Section Title</label>
                                         <input
                                             type="text"
@@ -765,7 +765,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
 
                             {activeTab === 'content' && (
                                 <>
-                                    <CollapsibleSection title="Our Services"> {/* defaultOpen removed */}
+                                    <CollapsibleSection title="Our Services">
                                         {(localContent.services ?? []).map((service) => (
                                             <div key={service.id} ref={el => itemRefs.current[service.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
@@ -798,7 +798,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         </button>
                                     </CollapsibleSection>
 
-                                    <CollapsibleSection title="Contact Information"> {/* defaultOpen removed */}
+                                    <CollapsibleSection title="Contact Information">
                                         <label className="block mb-2">Contact Form Recipient Email</label>
                                         <input
                                             type="email"
@@ -844,7 +844,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         />
                                     </CollapsibleSection>
 
-                                    <CollapsibleSection title="Header Links (Main Menu)"> {/* defaultOpen removed */}
+                                    <CollapsibleSection title="Header Links (Main Menu)">
                                         {(localContent.headerLinks ?? []).map((link) => (
                                             <div key={link.id} ref={el => itemRefs.current[link.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Text</label>
@@ -877,7 +877,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         </button>
                                     </CollapsibleSection>
 
-                                    <CollapsibleSection title="Social Links"> {/* defaultOpen removed */}
+                                    <CollapsibleSection title="Social Links">
                                         {(localContent.socialLinks ?? []).map((link) => (
                                             <div key={link.id} ref={el => itemRefs.current[link.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Name (for icon)</label>
@@ -913,7 +913,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         </button>
                                     </CollapsibleSection>
 
-                                    <CollapsibleSection title="Floating Action Buttons"> {/* defaultOpen removed */}
+                                    <CollapsibleSection title="Floating Action Buttons">
                                         {Object.keys(localContent.floatingButtons).map(key => {
                                             const iconSetting = localContent.floatingButtons[key as keyof typeof localContent.floatingButtons];
                                             return (
@@ -957,7 +957,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         })}
                                     </CollapsibleSection>
 
-                                    <CollapsibleSection title="Legal Pages"> {/* defaultOpen removed */}
+                                    <CollapsibleSection title="Legal Pages">
                                         {(localContent.legalPages ?? []).map((page) => (
                                             <div key={page.id} ref={el => itemRefs.current[page.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
@@ -1000,7 +1000,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                             )}
 
                             {activeTab === 'theme' && (
-                                <CollapsibleSection title="Theme Settings"> {/* defaultOpen removed */}
+                                <CollapsibleSection title="Theme Settings">
                                     <label className="block mb-2">Font Family (CSS string)</label>
                                     <input
                                         type="text"
@@ -1111,7 +1111,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                             )}
 
                             {activeTab === 'projects' && (
-                                <CollapsibleSection title="Project Management"> {/* defaultOpen removed */}
+                                <CollapsibleSection title="Project Management">
                                     <h3 className="text-xl font-semibold mb-4">Add New Project</h3>
                                     <form onSubmit={handleAddNewProject} className="space-y-4 mb-8">
                                         <label className="block">Project Title</label>
@@ -1196,6 +1196,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                                     {projectCategories.map(cat => (
                                                         <option key={cat} value={cat}>{cat}</option>
                                                     ))}
+                                                    {/* Option for existing category, if editing to a new one not already in list */}
+                                                    {!projectCategories.includes(newProject.category) && newProject.category && (
+                                                        <option value={newProject.category}>{newProject.category} (Current)</option>
+                                                    )}
                                                 </select>
                                                 <button
                                                     type="button"
@@ -1306,6 +1310,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
                                 className={`mt-3 text-center text-sm ${saveMessage.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}
+                            >
+                                {saveMessage}
                             </motion.p>
                         )}
                         {loading && <p className="mt-2 text-center text-yellow-400 text-sm">Loading initial data...</p>}
