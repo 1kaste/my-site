@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence, MotionProps } from 'framer-motion';
-import { auth } from '../../firebase/firebaseConfig';
+import { auth } from '../../firebase/firebaseConfig'; // Your modular auth instance
+import { signInWithEmailAndPassword } from 'firebase/auth'; // <--- NEW: Import the function directly
 import { CloseIcon } from '../ui/icons';
 
 interface AdminLoginProps {
@@ -16,6 +16,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ isOpen, onClose, onLoginSuccess
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // Ensure the auth instance from firebaseConfig is available
     const isFirebaseConfigured = !!auth;
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -30,10 +31,12 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ isOpen, onClose, onLoginSuccess
         }
 
         try {
-            // The 'auth' object is guaranteed to be non-null here due to the check above
-            await auth!.signInWithEmailAndPassword(email, password);
+            // <--- CORRECTED THIS LINE: Call signInWithEmailAndPassword as a function
+            //                             and pass 'auth' as the first argument.
+            await signInWithEmailAndPassword(auth, email, password);
             onLoginSuccess();
         } catch (err: any) {
+            // Firebase error codes are often in err.code for better handling
             setError(err.message || 'Failed to login. Please check your credentials.');
         } finally {
             setLoading(false);
@@ -71,14 +74,14 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ isOpen, onClose, onLoginSuccess
                             <CloseIcon />
                         </button>
                         <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-2">Admin Access</h2>
-                        
+
                         {!isFirebaseConfigured ? (
                              <div className="text-center text-red-500 bg-red-500/10 p-4 rounded-lg mt-4">
-                                <p className="font-semibold">Admin Features Disabled</p>
-                                <p className="text-sm text-red-400 mt-1">Firebase credentials are not configured in the environment. Please set them up for deployment.</p>
+                                 <p className="font-semibold">Admin Features Disabled</p>
+                                 <p className="text-sm text-red-400 mt-1">Firebase credentials are not configured in the environment. Please set them up for deployment.</p>
                             </div>
                         ) : (
-                           <>
+                            <>
                                 <p className="text-center text-gray-500 dark:text-gray-400 mb-6">Enter credentials to manage site content.</p>
                                 <form onSubmit={handleLogin}>
                                     <div className="space-y-4">
