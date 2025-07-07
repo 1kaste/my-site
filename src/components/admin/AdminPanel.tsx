@@ -254,6 +254,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
         setNewProject(prev => ({ ...prev, [name]: value }));
     }, []);
 
+    const handleExistingProjectChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>, projectId: string, field: keyof Project) => {
+        const { value } = e.target;
+        setLocalContent(prevContent => ({
+            ...prevContent,
+            latestProjects: {
+                ...prevContent.latestProjects,
+                projects: prevContent.latestProjects.projects.map(p =>
+                    p.id === projectId ? { ...p, [field]: value } : p
+                ),
+            },
+        }));
+        setSaveMessage('Changes pending. Click Save All Changes.');
+    }, []);
+
+
     const handleSaveAllChanges = useCallback(async () => {
         setIsSaving(true);
         setSaveMessage(null);
@@ -365,7 +380,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                         <div>
                             {activeTab === 'general' && (
                                 <>
-                                    <CollapsibleSection title="General Site Content" defaultOpen={true}>
+                                    <CollapsibleSection title="General Site Content"> {/* defaultOpen removed */}
                                         <label className="block mb-2">Site Name</label>
                                         <input
                                             type="text"
@@ -412,7 +427,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         />
                                     </CollapsibleSection>
 
-                                    <CollapsibleSection title="About Us Section" defaultOpen={true}>
+                                    <CollapsibleSection title="About Us Section"> {/* defaultOpen removed */}
                                         <label className="block mb-2">Introduction Text</label>
                                         <textarea
                                             name="introduction"
@@ -553,7 +568,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         </button>
                                     </CollapsibleSection>
 
-                                    <CollapsibleSection title="Why Choose Us Section" defaultOpen={true}>
+                                    <CollapsibleSection title="Why Choose Us Section"> {/* defaultOpen removed */}
                                         <label className="block mb-2">Section Title</label>
                                         <input
                                             type="text"
@@ -750,7 +765,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
 
                             {activeTab === 'content' && (
                                 <>
-                                    <CollapsibleSection title="Our Services" defaultOpen={true}>
+                                    <CollapsibleSection title="Our Services"> {/* defaultOpen removed */}
                                         {(localContent.services ?? []).map((service) => (
                                             <div key={service.id} ref={el => itemRefs.current[service.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
@@ -783,7 +798,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         </button>
                                     </CollapsibleSection>
 
-                                    <CollapsibleSection title="Contact Information" defaultOpen={true}>
+                                    <CollapsibleSection title="Contact Information"> {/* defaultOpen removed */}
                                         <label className="block mb-2">Contact Form Recipient Email</label>
                                         <input
                                             type="email"
@@ -829,7 +844,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         />
                                     </CollapsibleSection>
 
-                                    <CollapsibleSection title="Header Links (Main Menu)" defaultOpen={true}>
+                                    <CollapsibleSection title="Header Links (Main Menu)"> {/* defaultOpen removed */}
                                         {(localContent.headerLinks ?? []).map((link) => (
                                             <div key={link.id} ref={el => itemRefs.current[link.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Text</label>
@@ -862,7 +877,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         </button>
                                     </CollapsibleSection>
 
-                                    <CollapsibleSection title="Social Links" defaultOpen={true}>
+                                    <CollapsibleSection title="Social Links"> {/* defaultOpen removed */}
                                         {(localContent.socialLinks ?? []).map((link) => (
                                             <div key={link.id} ref={el => itemRefs.current[link.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Name (for icon)</label>
@@ -898,7 +913,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         </button>
                                     </CollapsibleSection>
 
-                                    <CollapsibleSection title="Floating Action Buttons" defaultOpen={true}>
+                                    <CollapsibleSection title="Floating Action Buttons"> {/* defaultOpen removed */}
                                         {Object.keys(localContent.floatingButtons).map(key => {
                                             const iconSetting = localContent.floatingButtons[key as keyof typeof localContent.floatingButtons];
                                             return (
@@ -942,7 +957,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         })}
                                     </CollapsibleSection>
 
-                                    <CollapsibleSection title="Legal Pages" defaultOpen={true}>
+                                    <CollapsibleSection title="Legal Pages"> {/* defaultOpen removed */}
                                         {(localContent.legalPages ?? []).map((page) => (
                                             <div key={page.id} ref={el => itemRefs.current[page.id] = el} className="bg-gray-800 p-3 rounded-md mb-3">
                                                 <label className="block mb-1">Title</label>
@@ -985,7 +1000,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                             )}
 
                             {activeTab === 'theme' && (
-                                <CollapsibleSection title="Theme Settings" defaultOpen={true}>
+                                <CollapsibleSection title="Theme Settings"> {/* defaultOpen removed */}
                                     <label className="block mb-2">Font Family (CSS string)</label>
                                     <input
                                         type="text"
@@ -1096,7 +1111,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                             )}
 
                             {activeTab === 'projects' && (
-                                <CollapsibleSection title="Project Management" defaultOpen={true}>
+                                <CollapsibleSection title="Project Management"> {/* defaultOpen removed */}
                                     <h3 className="text-xl font-semibold mb-4">Add New Project</h3>
                                     <form onSubmit={handleAddNewProject} className="space-y-4 mb-8">
                                         <label className="block">Project Title</label>
@@ -1207,16 +1222,64 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                             <p className="text-gray-400">No projects added yet.</p>
                                         ) : (
                                             (localContent.latestProjects.projects ?? []).map((project) => (
-                                                <div key={project.id} ref={el => itemRefs.current[project.id] = el} className="bg-gray-800 p-4 rounded-lg flex justify-between items-center">
-                                                    <div>
-                                                        <h4 className="font-semibold text-white">{project.title} ({project.category})</h4>
-                                                        <p className="text-gray-400 text-sm">{project.description}</p>
-                                                    </div>
+                                                <div key={project.id} ref={el => itemRefs.current[project.id] = el} className="bg-gray-800 p-4 rounded-lg space-y-3">
+                                                    <label className="block mb-1">Title</label>
+                                                    <input
+                                                        type="text"
+                                                        value={project.title}
+                                                        onChange={e => handleExistingProjectChange(e, project.id, 'title')}
+                                                        className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+                                                    />
+                                                    <label className="block mb-1">Description</label>
+                                                    <textarea
+                                                        value={project.description}
+                                                        onChange={e => handleExistingProjectChange(e, project.id, 'description')}
+                                                        rows={3}
+                                                        className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+                                                    />
+                                                    <label className="block mb-1">Media URL</label>
+                                                    <input
+                                                        type="text"
+                                                        value={project.mediaUrl}
+                                                        onChange={e => handleExistingProjectChange(e, project.id, 'mediaUrl')}
+                                                        className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+                                                    />
+                                                    <label className="block mb-1">Media Type</label>
+                                                    <select
+                                                        value={project.mediaType}
+                                                        onChange={e => handleExistingProjectChange(e, project.id, 'mediaType')}
+                                                        className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+                                                    >
+                                                        <option value="image">Image</option>
+                                                        <option value="video">Video</option>
+                                                    </select>
+                                                    <label className="block mb-1">Category</label>
+                                                    <select
+                                                        value={project.category}
+                                                        onChange={e => handleExistingProjectChange(e, project.id, 'category')}
+                                                        className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+                                                    >
+                                                        {projectCategories.map(cat => (
+                                                            <option key={cat} value={cat}>{cat}</option>
+                                                        ))}
+                                                        {/* Option for existing category, if editing to a new one not already in list */}
+                                                        {!projectCategories.includes(project.category) && project.category && (
+                                                            <option value={project.category}>{project.category} (Current)</option>
+                                                        )}
+                                                    </select>
+
+                                                    <label className="block mb-1">Project URL</label>
+                                                    <input
+                                                        type="text"
+                                                        value={project.projectUrl}
+                                                        onChange={e => handleExistingProjectChange(e, project.id, 'projectUrl')}
+                                                        className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+                                                    />
                                                     <button
                                                         onClick={() => deleteProject(project.id)}
-                                                        className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md text-sm transition-colors"
+                                                        className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md text-sm mt-3 w-full"
                                                     >
-                                                        Delete
+                                                        Delete Project
                                                     </button>
                                                 </div>
                                             ))
@@ -1243,8 +1306,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
                                 className={`mt-3 text-center text-sm ${saveMessage.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}
-                            >
-                                {saveMessage}
                             </motion.p>
                         )}
                         {loading && <p className="mt-2 text-center text-yellow-400 text-sm">Loading initial data...</p>}
