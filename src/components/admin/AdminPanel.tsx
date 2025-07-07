@@ -941,7 +941,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                                         name="darkModeHeadingColor"
                                         value={localThemeSettings.darkModeHeadingColor || '#FFFFFF'}
                                         onChange={handleThemeSettingChange}
-                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" }
+                                        className="w-full h-8 p-1 bg-gray-700 border border-gray-600 rounded-md text-white mb-4" 
                                     />
                                     <label className="block mb-2">Dark Mode Text Color</label>
                                     <input
