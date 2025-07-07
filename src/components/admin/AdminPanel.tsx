@@ -540,13 +540,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                         </div> {/* End Tab Content */}
 
 
-                        {/* Save Changes Button (outside tab content so it's always visible) */}
+                      {/* Save Changes Button (outside tab content so it's always visible) */}
                         <button
                             onClick={handleSaveAllChanges}
                             disabled={isSaving}
                             className={`w-full py-3 px-6 rounded-lg text-lg font-bold transition-colors ${
                                 isSaving ? 'bg-gray-500 cursor-not-allowed' : 'bg-brand-primary hover:bg-brand-secondary'
-                            } text-white mt-8`} {/* Added mt-8 for spacing */}
+                            } text-white mt-8`} {/* Corrected this line */}
                         >
                             {isSaving ? 'Saving...' : 'Save All Changes'}
                         </button>
